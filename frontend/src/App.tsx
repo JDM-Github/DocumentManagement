@@ -37,6 +37,8 @@ import LearningAndDevelopment from "./routes/personal-data-sheet/learning-and-de
 import SkillsAndHobbies from "./routes/personal-data-sheet/skills-and-hobbies";
 import OtherInformation from "./routes/personal-data-sheet/other-information";
 import References from "./routes/personal-data-sheet/references";
+import ViewPersonalDataSheet from "./routes/personal-data-sheet/print-information";
+import UserProfile from "./routes/profile";
 
 export default function App() {
 	const { user, isAuthenticated, isLoading } = useAuth();
@@ -51,7 +53,7 @@ export default function App() {
 
 	const [isCollapsed, setIsCollapsed] = useState(false);
 	const [isMobileOpen, setIsMobileOpen] = useState(false);
-	const allowedPaths = ["/", "/requests/", "/pass-slip/", "/accomplishment/"];
+	const allowedPaths = ["/", "/requests/", "/pass-slip/", "/accomplishment/", "/profile"];
 
 	const isAllowedPath = allowedPaths.some(
 		(path) =>
@@ -82,15 +84,13 @@ export default function App() {
 		);
 	}
 
-	if (!isAuthenticated) {
-		return <LoginScreen />;
-	}
+	if (!isAuthenticated) { return <LoginScreen />; }
 
 	const userId = user?.id || "1";
 	const departmentId = user?.departmentId || null;
 	const departmentName = user?.departmentName || "Not in Department";
-	// const isHead = user?.isHead || false;
-	const isHead = true;
+	const isHead = user?.isHead || false;
+	// const isHead = true;
 
 	const getNotFound = () => {
 		return <NotFoundPage
@@ -143,6 +143,7 @@ export default function App() {
 					case "Skills and Hobbies": return <SkillsAndHobbies />
 					case "Other Information": return <OtherInformation />
 					case "Reference": return <References />
+					case "Print / View": return <ViewPersonalDataSheet />
 
 
 					case "Create Document": return <CreateRequest userId={userId} />;
@@ -273,6 +274,7 @@ export default function App() {
 				<main className="flex-1 overflow-y-auto">
 					<Routes>
 						<Route path="/" element={getComponent()} />
+						<Route path="/profile" element={<UserProfile />} />
 						<Route path="/requests/:id" element={<RequestView />} />
 						<Route path="/pass-slip/:id" element={<ViewPassSlip />} />
 						<Route path="/accomplishment/:id" element={<ViewAccomplishmentReport />} />

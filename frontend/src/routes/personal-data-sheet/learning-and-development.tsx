@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DynamicForm } from "../../components/Form";
 import { Calendar, BookOpen, CheckCircle, AlertCircle, Plus, Edit, Trash2 } from "lucide-react";
@@ -19,6 +19,31 @@ export default function LearningAndDevelopment() {
         { name: "conductedBy", label: "Conducted By", type: "text" },
     ];
 
+    // ----------------------------
+    // Fetch existing trainings
+    // ----------------------------
+    useEffect(() => {
+        const fetchTrainings = async () => {
+            try {
+                const res = await RequestHandler.fetchData(
+                    "POST",
+                    "learning-development/find-or-create",
+                    {}
+                );
+                if (res.success && res.learningAndDevelopment?.trainings) {
+                    setTrainings(res.learningAndDevelopment.trainings);
+                }
+            } catch (err) {
+                showToast("Failed to load trainings.", "error");
+                console.error(err);
+            }
+        };
+        fetchTrainings();
+    }, []);
+
+    // ----------------------------
+    // Modal handlers
+    // ----------------------------
     const handleTrainingSubmit = (data: any) => {
         if (selectedTraining) {
             setTrainings(prev => prev.map(t => t === selectedTraining ? data : t));
@@ -41,6 +66,9 @@ export default function LearningAndDevelopment() {
         showToast("Training entry removed", "success");
     };
 
+    // ----------------------------
+    // Save to backend
+    // ----------------------------
     const handleSubmit = async () => {
         if (trainings.length === 0) {
             return showToast("Please add at least one training entry.", "error");
@@ -50,13 +78,14 @@ export default function LearningAndDevelopment() {
         try {
             const res = await RequestHandler.fetchData(
                 "POST",
-                "learning-development/create",
+                "learning-development/find-or-create",
                 { trainings }
             );
 
             removeToast(toastId);
             if (res.success) {
                 showToast("Training entries saved successfully!", "success");
+                window.location.reload();
             } else {
                 showToast(res.message || "Failed to save entries.", "error");
             }

@@ -85,28 +85,30 @@ export default function Header({
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <div className="relative">
-                            <button
-                                onClick={() => {
-                                    setTargetMyself(!targetMyself);
-                                    if (targetMyself) {
-                                        if (currentPage === "Request Logs")
-                                            setCurrentPage("Reviewed");
-                                    } else {
-                                        if (currentPage === "Reviewed")
-                                            setCurrentPage("Request Logs");
-                                    }
-                                }}
-                                className="p-2 rounded-lg hover:bg-white/10 transition-all duration-200 hover:scale-105 group relative"
-                                title={targetMyself ? "Viewing My Requests" : "Viewing Department Requests"}
-                            >
-                                {targetMyself ? (
-                                    <UserCheck className="w-6 h-6 text-white" />
-                                ) : (
-                                    <User className="w-6 h-6 text-white" />
-                                )}
-                            </button>
-                        </div>
+                        {/* {user?.role !== "HEAD" && */}
+                            <div className="relative">
+                                <button
+                                    onClick={() => {
+                                        setTargetMyself(!targetMyself);
+                                        if (targetMyself) {
+                                            if (currentPage === "Request Logs")
+                                                setCurrentPage("Reviewed");
+                                        } else {
+                                            if (currentPage === "Reviewed")
+                                                setCurrentPage("Request Logs");
+                                        }
+                                    }}
+                                    className="p-2 rounded-lg hover:bg-white/10 transition-all duration-200 hover:scale-105 group relative"
+                                    title={targetMyself ? "Viewing My Requests" : "Viewing Department Requests"}
+                                >
+                                    {targetMyself ? (
+                                        <UserCheck className="w-6 h-6 text-white" />
+                                    ) : (
+                                        <User className="w-6 h-6 text-white" />
+                                    )}
+                                </button>
+                            </div>
+                        {/* } */}
 
                         {/* Announcements */}
                         <div className="relative">

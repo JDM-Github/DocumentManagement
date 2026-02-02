@@ -1,4 +1,4 @@
-import { useState, ReactNode, useEffect } from 'react';
+import { useState, ReactNode, useEffect, useRef } from 'react';
 import {
     X,
     Trash2,
@@ -56,7 +56,6 @@ export function DynamicForm({
     const [formData, setFormData] = useState(initialData);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    // Helper function to format date/time values for inputs
     const formatDateTimeValue = (value: any, type: string) => {
         if (!value) return '';
 
@@ -91,7 +90,6 @@ export function DynamicForm({
         }
     };
 
-    // Process initial data to format date/time fields
     const processInitialData = (data: any) => {
         const processed = { ...data };
 
@@ -102,15 +100,18 @@ export function DynamicForm({
                 }
             }
         });
-
         return processed;
     };
 
+    const initializedRef = useRef(false);
+
     useEffect(() => {
-        const processedData = processInitialData(initialData);
-        setFormData(processedData);
-        console.log('Processed Initial Data:', JSON.stringify(processedData));
-    }, []);
+        if (initializedRef.current) return;
+        if (!initialData || Object.keys(initialData).length === 0) return;
+
+        setFormData(processInitialData(initialData));
+        initializedRef.current = true;
+    }, [initialData]);
 
     const handleChange = (fieldName: string, value: any) => {
         setFormData((prev: any) => ({ ...prev, [fieldName]: value }));

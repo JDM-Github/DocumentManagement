@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DynamicForm } from "../../components/Form";
 import { Calendar, MapPin, CheckCircle, AlertCircle, Plus, Edit, Trash2 } from "lucide-react";
@@ -20,6 +20,31 @@ export default function CivilServiceEligibility() {
         { name: "validityDate", label: "Validity Date", type: "date", icon: <Calendar size={16} /> },
     ];
 
+    // ----------------------------
+    // Fetch existing eligibilities
+    // ----------------------------
+    useEffect(() => {
+        const fetchEligibilities = async () => {
+            try {
+                const res = await RequestHandler.fetchData(
+                    "POST",
+                    "civil-service-eligibility/find-or-create",
+                    {}
+                );
+                if (res.success && res.civilServiceEligibility?.eligibilities) {
+                    setEligibilities(res.civilServiceEligibility.eligibilities);
+                }
+            } catch (err) {
+                showToast("Failed to load civil service eligibilities.", "error");
+                console.error(err);
+            }
+        };
+        fetchEligibilities();
+    }, []);
+
+    // ----------------------------
+    // Child modal handlers
+    // ----------------------------
     const handleEligibilitySubmit = (data: any) => {
         if (selectedEligibility) {
             setEligibilities(prev => prev.map(e => e === selectedEligibility ? data : e));
@@ -42,6 +67,9 @@ export default function CivilServiceEligibility() {
         showToast("Eligibility removed", "success");
     };
 
+    // ----------------------------
+    // Save to backend
+    // ----------------------------
     const handleSubmit = async () => {
         if (eligibilities.length === 0) {
             return showToast("Please add at least one eligibility entry.", "error");
@@ -51,13 +79,14 @@ export default function CivilServiceEligibility() {
         try {
             const res = await RequestHandler.fetchData(
                 "POST",
-                "civil-service-eligibility/create",
+                "civil-service-eligibility/find-or-create",
                 { eligibilities }
             );
 
             removeToast(toastId);
             if (res.success) {
                 showToast("Civil service eligibility saved successfully!", "success");
+                window.location.reload();
             } else {
                 showToast(res.message || "Failed to save eligibility.", "error");
             }

@@ -356,51 +356,61 @@ export default function OngoingRequest({
 
     return (
         <>
-            <RequestStatus
-                toggleRefresh={toggleRefresh}
-                title="Ongoing Requests"
-                departmentId={departmentId}
-                status="ONGOING"
-                renderActions={renderActions}
-                additionalButtons={[
-                    {
-                        label: `Mass Sign (${selectedRows.length})`,
-                        icon: <PenTool size={14} />,
-                        onClick: () => setIsMassSignOpen(true),
-                        bg: "bg-indigo-500",
-                        hover: "hover:bg-indigo-600",
-                        text: "text-white",
-                        disabled: selectedRows.length === 0
-                    },
-                    {
-                        label: `Mass Forward (${selectedRows.length})`,
-                        icon: <ArrowRight size={14} />,
-                        onClick: () => setIsMassForwardOpen(true),
-                        bg: "bg-blue-500",
-                        hover: "hover:bg-blue-600",
-                        text: "text-white",
-                        disabled: selectedRows.length === 0
-                    },
-                    {
-                        label: `Mass Deny (${selectedRows.length})`,
-                        icon: <XCircleIcon size={14} />,
-                        onClick: () => setIsMassDenyOpen(true),
-                        bg: "bg-rose-500",
-                        hover: "hover:bg-rose-600",
-                        text: "text-white",
-                        disabled: selectedRows.length === 0
-                    },
-                    {
-                        label: "Refresh",
-                        icon: <RefreshCw size={14} />,
-                        onClick: () => setToggleRefresh(!toggleRefresh),
-                        bg: "bg-slate-200",
-                        hover: "hover:bg-slate-300",
-                        text: "text-slate-700"
-                    },
-                ]}
-                handleSelectionChange={handleSelectionChange}
-            />
+            {!isHead ? <>
+                <RequestStatus
+                    toggleRefresh={toggleRefresh}
+                    title="Ongoing Requests"
+                    departmentId={departmentId}
+                    status="ONGOING"
+                    renderActions={renderActions}
+                />
+            </> :
+                <RequestStatus
+                    toggleRefresh={toggleRefresh}
+                    title="Ongoing Requests"
+                    departmentId={departmentId}
+                    status="ONGOING"
+                    renderActions={renderActions}
+                    additionalButtons={[
+                        {
+                            label: `Mass Sign (${selectedRows.length})`,
+                            icon: <PenTool size={14} />,
+                            onClick: () => setIsMassSignOpen(true),
+                            bg: "bg-indigo-500",
+                            hover: "hover:bg-indigo-600",
+                            text: "text-white",
+                            disabled: selectedRows.length === 0
+                        },
+                        {
+                            label: `Mass Forward (${selectedRows.length})`,
+                            icon: <ArrowRight size={14} />,
+                            onClick: () => setIsMassForwardOpen(true),
+                            bg: "bg-blue-500",
+                            hover: "hover:bg-blue-600",
+                            text: "text-white",
+                            disabled: selectedRows.length === 0
+                        },
+                        {
+                            label: `Mass Deny (${selectedRows.length})`,
+                            icon: <XCircleIcon size={14} />,
+                            onClick: () => setIsMassDenyOpen(true),
+                            bg: "bg-rose-500",
+                            hover: "hover:bg-rose-600",
+                            text: "text-white",
+                            disabled: selectedRows.length === 0
+                        },
+                        {
+                            label: "Refresh",
+                            icon: <RefreshCw size={14} />,
+                            onClick: () => setToggleRefresh(!toggleRefresh),
+                            bg: "bg-slate-200",
+                            hover: "hover:bg-slate-300",
+                            text: "text-slate-700"
+                        },
+                    ]}
+                    handleSelectionChange={handleSelectionChange}
+                />
+            }
 
             {selectedRow && isSignFieldOpen && (
                 <DynamicForm

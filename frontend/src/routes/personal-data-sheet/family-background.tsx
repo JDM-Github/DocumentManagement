@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { User, Briefcase, Home, Calendar, Plus, Edit, Trash2, AlertCircle, CheckCircle } from "lucide-react";
 import { DynamicForm } from "../../components/Form";
@@ -9,18 +9,14 @@ export default function FamilyBackground() {
     const [children, setChildren] = useState<any[]>([]);
     const [isChildModalOpen, setIsChildModalOpen] = useState(false);
     const [selectedChild, setSelectedChild] = useState<any>(null);
+    const [initialValues, setInitialValues] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
 
     const familyFields = [
         /* =========================
            SPOUSE INFORMATION
         ========================== */
-        {
-            name: "spouseSurname",
-            label: "Spouse Surname",
-            type: "text",
-            section: "Spouse Information",
-            icon: <User size={16} />,
-        },
+        { name: "spouseSurname", label: "Spouse Surname", type: "text", section: "Spouse Information", icon: <User size={16} /> },
         { name: "spouseFirstName", label: "Spouse First Name", type: "text", section: "Spouse Information" },
         { name: "spouseMiddleName", label: "Spouse Middle Name", type: "text", section: "Spouse Information" },
         { name: "spouseNameExtension", label: "Name Extension", type: "text", placeholder: "Jr., Sr.", section: "Spouse Information" },
@@ -51,6 +47,34 @@ export default function FamilyBackground() {
         { name: "dateOfBirth", label: "Date of Birth", type: "date", required: true, icon: <Calendar size={16} /> },
     ];
 
+    // ----------------------------
+    // Load family background from backend
+    // ----------------------------
+    useEffect(() => {
+        const fetchFamilyBackground = async () => {
+            try {
+                const res = await RequestHandler.fetchData(
+                    "POST",
+                    "family-background/find-or-create",
+                    {}
+                );
+                if (res.success && res.familyBackground) {
+                    setInitialValues(res.familyBackground);
+                    setChildren(res.familyBackground.children || []);
+                }
+            } catch (err) {
+                showToast("Failed to load family background.", "error");
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchFamilyBackground();
+    }, []);
+
+    // ----------------------------
+    // Children CRUD
+    // ----------------------------
     const handleChildSubmit = (data: any) => {
         if (selectedChild) {
             setChildren((prev) => prev.map((c) => (c === selectedChild ? data : c)));
@@ -73,20 +97,29 @@ export default function FamilyBackground() {
         showToast("Child removed", "success");
     };
 
+    // ----------------------------
+    // Form submit
+    // ----------------------------
     const handleSubmit = async (data: any) => {
-        data.children = children;
+        const payload = {
+            ...data,
+            children,
+        };
 
         const toastId = showToast("Saving family background...", "loading");
+
         try {
             const res = await RequestHandler.fetchData(
                 "POST",
-                "family-background/create",
-                data
+                "family-background/find-or-create",
+                payload
             );
 
             removeToast(toastId);
+
             if (res.success) {
                 showToast("Family background saved successfully!", "success");
+                window.location.reload();
             } else {
                 showToast(res.message || "Failed to save information.", "error");
             }
@@ -115,16 +148,19 @@ export default function FamilyBackground() {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <DynamicForm
-                        isModal={false}
-                        isOpen={true}
-                        title="Family Background Form"
-                        fields={familyFields}
-                        onSubmit={handleSubmit}
-                        actionType="CREATE"
-                        submitButtonText="Save Family Background"
-                        size="xl"
-                    />
+                    {!loading && (
+                        <DynamicForm
+                            isModal={false}
+                            isOpen={true}
+                            title="Family Background Form"
+                            fields={familyFields}
+                            initialData={initialValues || {}}
+                            onSubmit={handleSubmit}
+                            actionType="UPDATE"
+                            submitButtonText="Save Family Background"
+                            size="xl"
+                        />
+                    )}
 
                     <motion.div
                         initial={{ opacity: 0, x: 20 }}

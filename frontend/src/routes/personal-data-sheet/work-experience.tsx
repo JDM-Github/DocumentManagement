@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DynamicForm } from "../../components/Form";
 import { Calendar, Briefcase, CheckCircle, AlertCircle, Plus, Edit, Trash2 } from "lucide-react";
@@ -20,6 +20,29 @@ export default function WorkExperience() {
         { name: "statusOfAppointment", label: "Status of Appointment", type: "text" },
         { name: "governmentService", label: "Government Service?", type: "checkbox" },
     ];
+
+    // ----------------------------
+    // Fetch existing work experiences
+    // ----------------------------
+    useEffect(() => {
+        const fetchExperiences = async () => {
+            try {
+                const res = await RequestHandler.fetchData(
+                    "POST",
+                    "work-experience/find-or-create",
+                    {}
+                );
+                if (res.success && res.workExperience?.experiences) {
+                    setExperiences(res.workExperience.experiences);
+                }
+            } catch (err) {
+                showToast("Failed to load work experiences.", "error");
+                console.error(err);
+            }
+        };
+        fetchExperiences();
+    }, []);
+
 
     const handleExperienceSubmit = (data: any) => {
         if (selectedExperience) {
@@ -52,13 +75,14 @@ export default function WorkExperience() {
         try {
             const res = await RequestHandler.fetchData(
                 "POST",
-                "work-experience/create",
+                "work-experience/find-or-create",
                 { experiences }
             );
 
             removeToast(toastId);
             if (res.success) {
                 showToast("Work experience saved successfully!", "success");
+                window.location.reload();
             } else {
                 showToast(res.message || "Failed to save work experiences.", "error");
             }
@@ -75,7 +99,7 @@ export default function WorkExperience() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                className="max-w-6xl mx-auto"
+                className="max-w-7xl mx-auto"
             >
                 <div className="mb-6">
                     <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DynamicForm } from "../../components/Form";
 import { Calendar, Users, CheckCircle, AlertCircle, Plus, Edit, Trash2, MapPin } from "lucide-react";
@@ -18,6 +18,25 @@ export default function VoluntaryWork() {
         { name: "numberOfHours", label: "Number of Hours", type: "number" },
         { name: "positionNatureOfWork", label: "Position / Nature of Work", type: "text" },
     ];
+
+    useEffect(() => {
+        const fetchEntries = async () => {
+            try {
+                const res = await RequestHandler.fetchData(
+                    "POST",
+                    "voluntary-work/find-or-create",
+                    {}
+                );
+                if (res.success && res.voluntaryWork?.entries) {
+                    setEntries(res.voluntaryWork.entries);
+                }
+            } catch (err) {
+                showToast("Failed to load voluntary work entries.", "error");
+                console.error(err);
+            }
+        };
+        fetchEntries();
+    }, []);
 
     const handleEntrySubmit = (data: any) => {
         if (selectedEntry) {
@@ -50,13 +69,14 @@ export default function VoluntaryWork() {
         try {
             const res = await RequestHandler.fetchData(
                 "POST",
-                "voluntary-work/create",
+                "voluntary-work/find-or-create",
                 { entries }
             );
 
             removeToast(toastId);
             if (res.success) {
                 showToast("Voluntary work entries saved successfully!", "success");
+                window.location.reload();
             } else {
                 showToast(res.message || "Failed to save entries.", "error");
             }
@@ -156,7 +176,6 @@ export default function VoluntaryWork() {
                     )}
                 </motion.div>
 
-                {/* Entry Modal */}
                 <AnimatePresence>
                     {isEntryModalOpen && (
                         <DynamicForm

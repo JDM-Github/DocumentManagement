@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { DynamicForm } from "../../components/Form";
 import { CheckCircle } from "lucide-react";
@@ -5,6 +6,7 @@ import RequestHandler from "../../lib/utilities/RequestHandler";
 import { showToast, removeToast } from "../../components/toast";
 
 export default function OtherInformation() {
+    const [initialData, setInitialData] = useState<any>({});
 
     const otherInfoFields = [
         /* =========================
@@ -75,18 +77,41 @@ export default function OtherInformation() {
         { name: "govIdPlace", label: "Place of Issuance", type: "text", section: "Government Issued ID" },
     ];
 
+    // ----------------------------
+    // Fetch existing other information
+    // ----------------------------
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const res = await RequestHandler.fetchData(
+                    "POST",
+                    "other-information/find-or-create",
+                    {}
+                );
+                if (res.success && res.otherInformation?.details) {
+                    setInitialData(res.otherInformation.details);
+                }
+            } catch (err) {
+                console.error(err);
+                showToast("Failed to fetch other information.", "error");
+            }
+        };
+        fetchData();
+    }, []);
+
     const handleSubmit = async (data: any) => {
         const toastId = showToast("Saving other information...", "loading");
         try {
             const res = await RequestHandler.fetchData(
                 "POST",
-                "other-information/create",
+                "other-information/find-or-create",
                 { details: data }
             );
 
             removeToast(toastId);
             if (res.success) {
                 showToast("Other information saved successfully!", "success");
+                window.location.reload();
             } else {
                 showToast(res.message || "Failed to save information.", "error");
             }
@@ -103,7 +128,7 @@ export default function OtherInformation() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                className="max-w-6xl mx-auto"
+                className="max-w-7xl mx-auto"
             >
                 <div className="mb-6">
                     <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">
@@ -119,6 +144,7 @@ export default function OtherInformation() {
                     isOpen={true}
                     title="Other Information (CSC PDS)"
                     fields={otherInfoFields}
+                    initialData={initialData}
                     onSubmit={handleSubmit}
                     actionType="CREATE"
                     submitButtonText="Save Information"

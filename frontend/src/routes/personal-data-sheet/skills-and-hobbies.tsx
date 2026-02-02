@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DynamicForm } from "../../components/Form";
 import { CheckCircle, AlertCircle, Plus, Edit, Trash2 } from "lucide-react";
@@ -16,6 +16,31 @@ export default function SkillsAndHobbies() {
         { name: "membership", label: "Membership / Organization", type: "text" },
     ];
 
+    // ----------------------------
+    // Fetch existing entries
+    // ----------------------------
+    useEffect(() => {
+        const fetchEntries = async () => {
+            try {
+                const res = await RequestHandler.fetchData(
+                    "POST",
+                    "skills-hobbies/find-or-create",
+                    {}
+                );
+                if (res.success && res.skillsAndHobbies?.entries) {
+                    setEntries(res.skillsAndHobbies.entries);
+                }
+            } catch (err) {
+                showToast("Failed to load entries.", "error");
+                console.error(err);
+            }
+        };
+        fetchEntries();
+    }, []);
+
+    // ----------------------------
+    // Modal handlers
+    // ----------------------------
     const handleEntrySubmit = (data: any) => {
         if (selectedEntry) {
             setEntries(prev => prev.map(e => e === selectedEntry ? data : e));
@@ -38,6 +63,9 @@ export default function SkillsAndHobbies() {
         showToast("Entry removed", "success");
     };
 
+    // ----------------------------
+    // Save to backend
+    // ----------------------------
     const handleSubmit = async () => {
         if (entries.length === 0) {
             return showToast("Please add at least one skill or hobby entry.", "error");
@@ -47,13 +75,14 @@ export default function SkillsAndHobbies() {
         try {
             const res = await RequestHandler.fetchData(
                 "POST",
-                "skills-hobbies/create",
+                "skills-hobbies/find-or-create",
                 { entries }
             );
 
             removeToast(toastId);
             if (res.success) {
                 showToast("Entries saved successfully!", "success");
+                window.location.reload();
             } else {
                 showToast(res.message || "Failed to save entries.", "error");
             }

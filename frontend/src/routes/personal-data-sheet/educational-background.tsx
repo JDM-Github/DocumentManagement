@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { DynamicForm } from "../../components/Form";
 import { BookOpen, Calendar } from "lucide-react";
@@ -5,6 +6,9 @@ import RequestHandler from "../../lib/utilities/RequestHandler";
 import { showToast, removeToast } from "../../components/toast";
 
 export default function EducationalBackground() {
+    const [initialValues, setInitialValues] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
     const educationFields = [
         /* =========================
            ELEMENTARY
@@ -62,18 +66,40 @@ export default function EducationalBackground() {
         { name: "graduateScholarHonors", label: "Scholar / Honors", type: "text", section: "Graduate Studies" },
     ];
 
+    useEffect(() => {
+        const fetchEducationalBackground = async () => {
+            try {
+                const res = await RequestHandler.fetchData(
+                    "POST",
+                    "educational-background/find-or-create",
+                    {}
+                );
+                if (res.success && res.educationalBackground) {
+                    setInitialValues(res.educationalBackground);
+                }
+            } catch (err) {
+                showToast("Failed to load educational background.", "error");
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchEducationalBackground();
+    }, []);
+
     const handleSubmit = async (data: any) => {
         const toastId = showToast("Saving educational background...", "loading");
         try {
             const res = await RequestHandler.fetchData(
                 "POST",
-                "educational-background/create",
+                "educational-background/find-or-create",
                 data
             );
 
             removeToast(toastId);
             if (res.success) {
                 showToast("Educational background saved successfully!", "success");
+                window.location.reload();
             } else {
                 showToast(res.message || "Failed to save educational background.", "error");
             }
@@ -101,16 +127,19 @@ export default function EducationalBackground() {
                     </p>
                 </div>
 
-                <DynamicForm
-                    isModal={false}
-                    isOpen={true}
-                    title="Educational Background Form"
-                    fields={educationFields}
-                    onSubmit={handleSubmit}
-                    actionType="CREATE"
-                    submitButtonText="Save Educational Background"
-                    size="xl"
-                />
+                {!loading && (
+                    <DynamicForm
+                        isModal={false}
+                        isOpen={true}
+                        title="Educational Background Form"
+                        fields={educationFields}
+                        initialData={initialValues || {}}
+                        onSubmit={handleSubmit}
+                        actionType="UPDATE"
+                        submitButtonText="Save Educational Background"
+                        size="xl"
+                    />
+                )}
             </motion.div>
         </div>
     );

@@ -12,6 +12,7 @@ import {
 import { NavItem } from '../lib/interface';
 import { navItems } from '../components/navItems';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../lib/context/auth';
 
 interface NavProps {
 	isCollapsed: boolean;
@@ -34,6 +35,7 @@ function Nav({
 	targetMyself,
 	departmentName
 }: NavProps) {
+	const { user } = useAuth();
 	const location = useLocation();
 	const navigate = useNavigate();
 
@@ -214,6 +216,13 @@ function Nav({
 		);
 	};
 
+	const initials = user?.name
+		.split(' ')
+		.map(n => n[0])
+		.join('')
+		.toUpperCase()
+		.slice(0, 2) || 'AD';
+
 	return (
 		<>
 			{isMobileOpen && (
@@ -241,7 +250,7 @@ function Nav({
 								className={`text-3xl font-bold text-[#0d2758] whitespace-nowrap transition-all duration-300 ${isCollapsed ? "opacity-0 w-0" : "opacity-100 w-auto"
 									}`}
 							>
-								DMS CCC
+								DTS CCC
 							</div>
 						</div>
 
@@ -285,15 +294,15 @@ function Nav({
 							>
 
 								<div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-cyan-400 rounded-full flex items-center justify-center text-slate-900 font-semibold shadow-lg flex-shrink-0">
-									AD
+									{initials}
 								</div>
 
 								<div
 									className={`flex-1 min-w-0 text-left transition-all duration-300 ${isCollapsed ? "opacity-0 w-0 overflow-hidden" : "opacity-100"}`}
 								>
-									<p className="text-sm font-medium text-white truncate">Admin User</p>
+									<p className="text-sm font-medium text-white truncate">{user?.name}</p>
 
-									<p className="text-xs text-slate-400 truncate">admin@example.com</p>
+									<p className="text-xs text-slate-400 truncate">{user?.email}</p>
 
 								</div>
 
@@ -318,7 +327,7 @@ function Nav({
 										<button
 											className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 transition-colors"
 											onClick={() => {
-												setCurrentPage('Profile');
+												navigate("/profile");
 												setIsAccountOpen(false);
 											}}
 										>
