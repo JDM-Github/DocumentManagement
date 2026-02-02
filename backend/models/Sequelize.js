@@ -10,12 +10,12 @@ const url = process.env.DATABASE_URL;
 const sequelize = new Sequelize(url, {
 	dialect: "postgres",
 	dialectModule: pg,
-	// dialectOptions: {
-	// 	ssl: {
-	// 		require: true,
-	// 		rejectUnauthorized: false,
-	// 	},
-	// },
+	dialectOptions: {
+		ssl: {
+			require: true,
+			rejectUnauthorized: false,
+		},
+	},
 });
 
 module.exports = sequelize;
