@@ -1,0 +1,179 @@
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { DynamicForm } from "../../components/Form";
+import { Calendar, MapPin, CheckCircle, AlertCircle, Plus, Edit, Trash2 } from "lucide-react";
+import RequestHandler from "../../lib/utilities/RequestHandler";
+import { showToast, removeToast } from "../../components/toast";
+
+export default function CivilServiceEligibility() {
+    const [eligibilities, setEligibilities] = useState<any[]>([]);
+    const [isEligibilityModalOpen, setIsEligibilityModalOpen] = useState(false);
+    const [selectedEligibility, setSelectedEligibility] = useState<any>(null);
+
+    const eligibilityFields = [
+        { name: "eligibilityType", label: "Eligibility Type", type: "text", required: true },
+        { name: "rating", label: "Rating", type: "text" },
+        { name: "examDate", label: "Exam Date", type: "date", icon: <Calendar size={16} /> },
+        { name: "examPlace", label: "Exam Place", type: "text", icon: <MapPin size={16} /> },
+        { name: "licenseNumber", label: "License Number", type: "text" },
+        { name: "idNumber", label: "ID Number", type: "text" },
+        { name: "validityDate", label: "Validity Date", type: "date", icon: <Calendar size={16} /> },
+    ];
+
+    const handleEligibilitySubmit = (data: any) => {
+        if (selectedEligibility) {
+            setEligibilities(prev => prev.map(e => e === selectedEligibility ? data : e));
+            showToast("Eligibility updated successfully!", "success");
+        } else {
+            setEligibilities(prev => [...prev, data]);
+            showToast("Eligibility added successfully!", "success");
+        }
+        setSelectedEligibility(null);
+        setIsEligibilityModalOpen(false);
+    };
+
+    const handleEligibilityEdit = (eligibility: any) => {
+        setSelectedEligibility(eligibility);
+        setIsEligibilityModalOpen(true);
+    };
+
+    const handleEligibilityDelete = (eligibility: any) => {
+        setEligibilities(prev => prev.filter(e => e !== eligibility));
+        showToast("Eligibility removed", "success");
+    };
+
+    const handleSubmit = async () => {
+        if (eligibilities.length === 0) {
+            return showToast("Please add at least one eligibility entry.", "error");
+        }
+
+        const toastId = showToast("Saving civil service eligibility...", "loading");
+        try {
+            const res = await RequestHandler.fetchData(
+                "POST",
+                "civil-service-eligibility/create",
+                { eligibilities }
+            );
+
+            removeToast(toastId);
+            if (res.success) {
+                showToast("Civil service eligibility saved successfully!", "success");
+            } else {
+                showToast(res.message || "Failed to save eligibility.", "error");
+            }
+        } catch (err) {
+            removeToast(toastId);
+            showToast("Unexpected error occurred.", "error");
+            console.error(err);
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-50 p-4 sm:p-6 lg:p-8">
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="max-w-7xl mx-auto"
+            >
+                <div className="mb-6">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">
+                        Civil Service Eligibility
+                    </h1>
+                    <p className="text-base text-slate-600">
+                        Add your civil service eligibility records below
+                    </p>
+                </div>
+
+                <motion.div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                    <div className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200 px-6 py-5 flex justify-between items-center">
+                        <h2 className="text-lg font-bold text-slate-900">Eligibilities</h2>
+                        <button
+                            onClick={() => { setSelectedEligibility(null); setIsEligibilityModalOpen(true); }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-sm"
+                        >
+                            <Plus size={16} /> Add Eligibility
+                        </button>
+                    </div>
+
+                    <div className="p-6 max-h-[500px] overflow-y-auto">
+                        {eligibilities.length === 0 ? (
+                            <div className="text-center py-12">
+                                <div className="p-4 bg-slate-100 rounded-full inline-block mb-3">
+                                    <AlertCircle size={32} className="text-slate-400" />
+                                </div>
+                                <p className="text-base font-medium text-slate-600 mb-1">No eligibilities added yet</p>
+                                <p className="text-sm text-slate-500">Click "Add Eligibility" to start</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {eligibilities.map((elig, idx) => (
+                                    <motion.div
+                                        key={idx}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, x: -100 }}
+                                        layout
+                                        className="border-2 border-slate-200 p-4 rounded-xl bg-white hover:border-blue-300 hover:shadow-md transition-all"
+                                    >
+                                        <div className="flex justify-between items-start mb-2">
+                                            <span className="font-semibold text-slate-800">{elig.eligibilityType}</span>
+                                            <div className="flex gap-1">
+                                                <button onClick={() => handleEligibilityEdit(elig)} className="p-1 text-blue-600 hover:bg-blue-100 rounded-lg transition">
+                                                    <Edit size={14} />
+                                                </button>
+                                                <button onClick={() => handleEligibilityDelete(elig)} className="p-1 text-red-600 hover:bg-red-100 rounded-lg transition">
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <p className="text-sm text-slate-600">
+                                            Exam Date: {elig.examDate ? new Date(elig.examDate).toLocaleDateString() : "N/A"} | Place: {elig.examPlace || "N/A"} | Rating: {elig.rating || "N/A"}
+                                        </p>
+                                        <p className="text-sm text-slate-600">
+                                            License #: {elig.licenseNumber || "N/A"} | ID #: {elig.idNumber || "N/A"} | Validity: {elig.validityDate ? new Date(elig.validityDate).toLocaleDateString() : "N/A"}
+                                        </p>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {eligibilities.length > 0 && (
+                        <div className="border-t border-slate-200 bg-slate-50 px-6 py-4 flex justify-between items-center">
+                            <div className="flex items-center gap-2 text-sm">
+                                <CheckCircle size={16} className="text-green-600" />
+                                <span className="text-slate-700">
+                                    <span className="font-semibold text-green-600">{eligibilities.length}</span> {eligibilities.length === 1 ? 'eligibility' : 'eligibilities'} ready
+                                </span>
+                            </div>
+                            <button
+                                onClick={handleSubmit}
+                                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-sm"
+                            >
+                                Save Eligibilities
+                            </button>
+                        </div>
+                    )}
+                </motion.div>
+
+                <AnimatePresence>
+                    {isEligibilityModalOpen && (
+                        <DynamicForm
+                            isModal={true}
+                            isOpen={isEligibilityModalOpen}
+                            title={selectedEligibility ? "Edit Eligibility" : "Add New Eligibility"}
+                            fields={eligibilityFields}
+                            initialData={selectedEligibility || {}}
+                            onSubmit={handleEligibilitySubmit}
+                            actionType={selectedEligibility ? "UPDATE" : "CREATE"}
+                            submitButtonText={selectedEligibility ? "Update Eligibility" : "Add Eligibility"}
+                            onClose={() => { setIsEligibilityModalOpen(false); setSelectedEligibility(null); }}
+                            size="lg"
+                        />
+                    )}
+                </AnimatePresence>
+            </motion.div>
+        </div>
+    );
+}
