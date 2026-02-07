@@ -45,12 +45,28 @@ const PassSlip = sequelize.define(
             defaultValue: false,
             comment: "Whether this pass slip is forwarded to HR",
         },
-
         status: {
-            type: DataTypes.ENUM("PENDING", "APPROVED", "REJECTED"),
+            type: DataTypes.ENUM("PENDING", "APPROVED BY DEAN", "APPROVED BY PRESIDENT", "REJECTED"),
             allowNull: false,
             defaultValue: "PENDING",
         },
+
+        isInDean: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: true
+        },
+        isInPresident: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false
+        },
+        isHaveDeanSignature: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false
+        },
+        isHavePresidentSignature: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false
+        }
     },
     {
         timestamps: true,

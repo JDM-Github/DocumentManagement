@@ -7,7 +7,6 @@ const { DataTypes } = require("sequelize");
 const User = sequelize.define(
     "User",
     {
-        // Basic Information
         employeeNo: {
             type: DataTypes.STRING(50),
             allowNull: true,
@@ -30,7 +29,6 @@ const User = sequelize.define(
             allowNull: false,
         },
 
-        // Contact Information
         email: {
             type: DataTypes.STRING(150),
             allowNull: false,
@@ -46,7 +44,6 @@ const User = sequelize.define(
             defaultValue: "",
         },
 
-        // Address
         streetAddress: {
             type: DataTypes.STRING(255),
             allowNull: true,
@@ -77,7 +74,6 @@ const User = sequelize.define(
             defaultValue: "",
         },
 
-        // Personal Information
         dateOfBirth: {
             type: DataTypes.DATEONLY,
             allowNull: true,
@@ -88,21 +84,21 @@ const User = sequelize.define(
             allowNull: true,
         },
 
-        // Employment Information
         passwordHash: {
             type: DataTypes.STRING,
             allowNull: false,
         },
 
         role: {
-            type: DataTypes.ENUM("USER", "ADMIN", "HEAD"),
+            type: DataTypes.ENUM("USER", "MISD", "HEAD", "DEAN", "PRESIDENT"),
             allowNull: false,
             defaultValue: "USER",
         },
 
         departmentId: {
             type: DataTypes.INTEGER,
-            allowNull: false,
+            allowNull: true,
+            defaultValue: null
         },
 
         jobTitle: {
@@ -122,7 +118,6 @@ const User = sequelize.define(
             defaultValue: "ACTIVE",
         },
 
-        // Emergency Contact
         emergencyContactName: {
             type: DataTypes.STRING(150),
             allowNull: true,
@@ -141,7 +136,6 @@ const User = sequelize.define(
             defaultValue: "",
         },
 
-        // System
         profilePhoto: {
             type: DataTypes.STRING,
             allowNull: true,

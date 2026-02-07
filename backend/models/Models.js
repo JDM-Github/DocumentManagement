@@ -24,4 +24,10 @@ module.exports = {
 	SkillsAndHobbies: require("./SkillsAndHobbiesModel.js"),
 	OtherInformation: require("./OtherInformationModel.js"),
 	Reference: require("./ReferenceModel.js"),
+	Clearance: require("./ClearanceModel.js"),
+	FacultyEvaluation: require("./FacultyEvaluationModel.js"),
+	StudentEvaluation: require("./StudentEvaluationModel.js"),
+	TravelOrder: require("./TravelOrderModel.js"),
+	FlagCeremonyAttendance: require("./FlagCeremonyAttendanceModel.js"),
+	SuggestionAndProblem: require("./SuggestionAndProblemModel.js"),
 };

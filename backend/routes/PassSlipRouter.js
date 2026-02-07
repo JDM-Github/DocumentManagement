@@ -3,6 +3,7 @@
 
 const express = require("express");
 const { PassSlip, User, Department, Notification } = require("../models/Models");
+const { Op } = require("sequelize");
 
 class PassSlipRouter {
 	constructor() {
@@ -13,10 +14,8 @@ class PassSlipRouter {
 	}
 
 	getRouter() {
-		/**
-		 * Get all pass slips of the logged-in user
-		 */
-		this.router.get("/get-all", async (req, res) => {
+		// GET /pass-slip/get - Get all pass slips for authenticated user
+		this.router.get("/get", async (req, res) => {
 			try {
 				const userId = req.user?.userId;
 
@@ -46,46 +45,7 @@ class PassSlipRouter {
 			}
 		});
 
-		/**
-		 * Get all pass slips by department (for HEAD / HR)
-		 */
-		this.router.get("/get-all-department", async (req, res) => {
-			try {
-				const departmentId = req.user?.departmentId;
-				const isHead = req.user?.isHead || false;
-
-				if (!departmentId) {
-					return res.status(400).json({
-						success: false,
-						message: "Department id is required.",
-					});
-				}
-
-				const whereClause = {
-					departmentId
-				}
-				if (!isHead) {
-					whereClause["forwardToHR"] = true;
-				}
-				const passslips = await PassSlip.findAll({
-					where: whereClause,
-					order: [["createdAt", "DESC"]],
-				});
-
-				return res.json({
-					success: true,
-					message: "Successfully fetched department pass slips.",
-					passslips,
-				});
-			} catch (err) {
-				console.error(err);
-				return res.status(500).json({
-					success: false,
-					message: "Internal server error.",
-				});
-			}
-		});
-
+		// GET /pass-slip/get/:id - Get specific pass slip by ID
 		this.router.get("/get/:id", async (req, res) => {
 			try {
 				const { id } = req.params;
@@ -118,7 +78,7 @@ class PassSlipRouter {
 					message: "Successfully fetched pass slip.",
 					passSlip: {
 						...passSlip.toJSON(),
-						user, 
+						user,
 						department
 					},
 				});
@@ -131,6 +91,224 @@ class PassSlipRouter {
 			}
 		});
 
+		// GET /pass-slip/count - Get total count of pass slips
+		this.router.get("/count", async (req, res) => {
+			try {
+				const userId = req.user?.userId;
+
+				if (!userId) {
+					return res.status(400).json({
+						success: false,
+						message: "User id is required.",
+					});
+				}
+
+				const count = await PassSlip.count({
+					where: { userId }
+				});
+
+				return res.json({
+					success: true,
+					count
+				});
+			} catch (err) {
+				console.error(err);
+				return res.status(500).json({
+					success: false,
+					message: "Internal server error.",
+				});
+			}
+		});
+
+		// GET /pass-slip/stats - Get pass slip statistics
+		this.router.get("/stats", async (req, res) => {
+			try {
+				const userId = req.user?.userId;
+
+				if (!userId) {
+					return res.status(400).json({
+						success: false,
+						message: "User id is required.",
+					});
+				}
+
+				const total = await PassSlip.count({
+					where: { userId }
+				});
+				const pending = await PassSlip.count({
+					where: { userId, status: "PENDING" }
+				});
+				const approvedByDean = await PassSlip.count({
+					where: { userId, status: "APPROVED BY DEAN" }
+				});
+				const approvedByPresident = await PassSlip.count({
+					where: { userId, status: "APPROVED BY PRESIDENT" }
+				});
+				const rejected = await PassSlip.count({
+					where: { userId, status: "REJECTED" }
+				});
+
+				// Additional stats by purpose
+				const personal = await PassSlip.count({
+					where: { userId, purpose: "PERSONAL" }
+				});
+				const official = await PassSlip.count({
+					where: { userId, purpose: "OFFICIAL" }
+				});
+
+				// Forwarded to HR count
+				const forwardedToHR = await PassSlip.count({
+					where: { userId, forwardToHR: true }
+				});
+
+				return res.json({
+					success: true,
+					stats: {
+						total,
+						byStatus: {
+							pending,
+							approvedByDean,
+							approvedByPresident,
+							rejected
+						},
+						byPurpose: {
+							personal,
+							official
+						},
+						forwardedToHR
+					}
+				});
+			} catch (err) {
+				console.error(err);
+				return res.status(500).json({
+					success: false,
+					message: "Internal server error.",
+				});
+			}
+		});
+
+		// Legacy routes (keep for backwards compatibility)
+		this.router.get("/get-all", async (req, res) => {
+			try {
+				const userId = req.user?.userId;
+
+				if (!userId) {
+					return res.status(400).json({
+						success: false,
+						message: "User id is required.",
+					});
+				}
+
+				const passslips = await PassSlip.findAll({
+					where: { userId },
+					order: [["createdAt", "DESC"]],
+				});
+
+				return res.json({
+					success: true,
+					message: "Successfully fetched pass slips.",
+					passslips,
+				});
+			} catch (err) {
+				console.error(err);
+				return res.status(500).json({
+					success: false,
+					message: "Internal server error.",
+				});
+			}
+		});
+
+		this.router.get("/get-all-department", async (req, res) => {
+			try {
+				const departmentId = req.user?.departmentId;
+				const isHead = req.user?.isHead || false;
+
+				if (!departmentId) {
+					return res.status(400).json({
+						success: false,
+						message: "Department id is required.",
+					});
+				}
+
+				const users = await User.findAll({
+					where: { departmentId },
+				});
+
+				const userIds = users.map(user => user.id);
+
+				if (!userIds.length) {
+					return res.json({
+						success: true,
+						message: "No users in this department.",
+						passslips: [],
+					});
+				}
+
+				const whereClause = {
+					userId: { [Op.in]: userIds }
+				};
+				if (!isHead) {
+					whereClause.forwardToHR = true;
+				}
+
+				const passslips = await PassSlip.findAll({
+					where: whereClause,
+					order: [["createdAt", "DESC"]],
+				});
+
+				const userMap = users.reduce((acc, user) => {
+					acc[user.id] = user;
+					return acc;
+				}, {});
+
+				const passslipsWithUser = passslips.map(ps => ({
+					...ps.toJSON(),
+					user: userMap[ps.userId] || null
+				}));
+
+				return res.json({
+					success: true,
+					message: "Successfully fetched department pass slips.",
+					passslips: passslipsWithUser,
+				});
+
+			} catch (err) {
+				console.error(err);
+				return res.status(500).json({
+					success: false,
+					message: "Internal server error.",
+				});
+			}
+		});
+
+		this.router.get("/get-all-higherup", async (req, res) => {
+			try {
+				const isDean = req.user?.role === "DEAN";
+				const isPresident = req.user?.role === "PRESIDENT";
+				const whereClause = {}
+				if (isDean) {
+					whereClause["isInDean"] = true;
+				}
+				if (isPresident) {
+					whereClause["isInPresident"] = true;
+				}
+				const passslips = await PassSlip.findAll({
+					where: whereClause,
+					order: [["createdAt", "DESC"]],
+				});
+				return res.json({
+					success: true,
+					message: "Successfully fetched pass slips.",
+					passslips,
+				});
+			} catch (err) {
+				console.error(err);
+				return res.status(500).json({
+					success: false,
+					message: "Internal server error.",
+				});
+			}
+		});
 	}
 
 	postRouter() {
@@ -197,19 +375,13 @@ class PassSlipRouter {
 			try {
 				const { id } = req.params;
 				const { status } = req.body;
-				const isHead = req.user?.isHead || false;
+				const isDean = req.user?.role === "DEAN";
+				const isPresident = req.user?.role == "PRESIDENT";
 
-				if (!isHead) {
+				if (!isDean && !isPresident) {
 					return res.status(403).json({
 						success: false,
 						message: "Unauthorized action.",
-					});
-				}
-
-				if (!["APPROVED", "REJECTED"].includes(status)) {
-					return res.status(400).json({
-						success: false,
-						message: "Invalid status value.",
 					});
 				}
 
@@ -221,7 +393,13 @@ class PassSlipRouter {
 					});
 				}
 
-				await passSlip.update({ status });
+				await PassSlip.update({
+					status,
+					isInPresident: status === "APPROVED BY DEAN" || status === "APPROVED BY PRESIDENT",
+					isHaveDeanSignature: status === "APPROVED BY DEAN" || status === "APPROVED BY PRESIDENT",
+					isHavePresidentSignature: status === "APPROVED BY PRESIDENT"
+				}, { where: { id } });
+
 				const user = await User.findByPk(passSlip.userId, {
 					attributes: ["id", "firstName", "lastName", "email"],
 				});
@@ -239,7 +417,6 @@ class PassSlipRouter {
 						},
 					});
 				}
-
 				return res.json({
 					success: true,
 					message: "Pass slip status updated successfully and notification sent.",

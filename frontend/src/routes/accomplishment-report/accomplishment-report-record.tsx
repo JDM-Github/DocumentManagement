@@ -5,7 +5,6 @@ import {
     Eye,
     Edit,
     Trash2,
-    Clock,
     FileText,
     Download,
     CheckCircle,
@@ -34,39 +33,27 @@ export default function MyAccomplishmentRecord() {
             label: "ID",
             sortable: true,
             width: "60px",
-            render: (row: any) => (
-                <span className="font-mono text-sm text-slate-600">#{row.id}</span>
-            )
         },
         {
             key: "reportNo",
             label: "Report Number",
             sortable: true,
-            render: (row: any) => (
-                <span className="font-semibold text-slate-800">{row.reportNo}</span>
-            )
+        },
+        {
+            key: "status",
+            label: "Status",
+            sortable: true,
         },
         {
             key: "createdAt",
             label: "Date Created",
             sortable: true,
             icon: <Calendar size={14} />,
-            render: (row: any) => (
-                <div className="flex items-center gap-1.5">
-                    <Clock size={12} className="text-slate-400" />
-                    <span className="text-sm text-slate-600">{row.createdAt}</span>
-                </div>
-            )
         },
         {
             key: "entriesCount",
             label: "Entries",
             sortable: true,
-            render: (row: any) => (
-                <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">
-                    {row.entriesCount}
-                </span>
-            )
         },
     ];
 
@@ -89,6 +76,7 @@ export default function MyAccomplishmentRecord() {
                         hour: '2-digit',
                         minute: '2-digit'
                     }),
+                    status: r.status,
                     entriesCount: r.entries?.length || 0,
                     entries: r.entries,
                     uploadedUrl: r.uploadedUrl,
@@ -276,11 +264,30 @@ export default function MyAccomplishmentRecord() {
     );
 
     return (
-        <div className="p-4 sm:p-6 min-h-[600px] bg-gradient-to-br from-slate-50 via-blue-50 to-slate-50">
+        <motion.div
+            className="p-4 sm:p-6 max-w-7xl mx-auto min-h-[600px] bg-gradient-to-br from-slate-50 via-blue-50 to-slate-50"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+        >
+            <motion.div
+                className="mb-6"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1, duration: 0.3 }}
+            >
+                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">
+                    My Accomplishment Records
+                </h1>
+                <p className="text-base text-slate-600">
+                    Track and manage your submitted accomplishment reports. Expand a row to view details, edit remarks, or delete a report.
+                </p>
+            </motion.div>
+
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
+                transition={{ delay: 0.2, duration: 0.4 }}
             >
                 <DataTable
                     title="My Accomplishment Records"
@@ -293,11 +300,10 @@ export default function MyAccomplishmentRecord() {
                 />
             </motion.div>
 
-            {/* Edit Modal */}
             <AnimatePresence>
                 {isEditOpen && selectedRecord && (
                     <DynamicForm
-                        isModal={true}
+                        isModal
                         isOpen={isEditOpen}
                         title="✏️ Edit Accomplishment Report"
                         fields={[
@@ -332,11 +338,10 @@ export default function MyAccomplishmentRecord() {
                 )}
             </AnimatePresence>
 
-            {/* Delete Modal */}
             <AnimatePresence>
                 {isDeleteOpen && selectedRecord && (
                     <DynamicForm
-                        isModal={true}
+                        isModal
                         isOpen={isDeleteOpen}
                         title="🗑️ Delete Accomplishment Report"
                         fields={[
@@ -348,10 +353,8 @@ export default function MyAccomplishmentRecord() {
                                 placeholder: "DELETE",
                                 icon: <AlertTriangle size={16} />,
                                 validation: (value: string) => {
-                                    if (value !== "DELETE") {
-                                        return "Please type DELETE to confirm deletion";
-                                    }
-                                }
+                                    if (value !== "DELETE") return "Please type DELETE to confirm deletion";
+                                },
                             }
                         ]}
                         onSubmit={async () => {
@@ -373,6 +376,6 @@ export default function MyAccomplishmentRecord() {
                     />
                 )}
             </AnimatePresence>
-        </div>
+        </motion.div>
     );
 }

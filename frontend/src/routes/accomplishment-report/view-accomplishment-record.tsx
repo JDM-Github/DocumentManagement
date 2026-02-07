@@ -17,6 +17,7 @@ import {
 import { useParams, useNavigate } from "react-router-dom";
 import RequestHandler from "../../lib/utilities/RequestHandler";
 import { showToast, removeToast } from "../../components/toast";
+import { ViewSignatureStatus } from "../../components/view-signature-status";
 
 export default function ViewAccomplishmentReport() {
     const { id } = useParams();
@@ -112,20 +113,8 @@ export default function ViewAccomplishmentReport() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.4 }}
-                className="max-w-5xl mx-auto space-y-6"
+                className="max-w-7xl mx-auto space-y-6"
             >
-                <motion.button
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.3 }}
-                    whileHover={{ x: -4 }}
-                    onClick={() => navigate(-1)}
-                    className="inline-flex items-center gap-2 text-base text-slate-600 hover:text-slate-900 transition-colors"
-                >
-                    <ArrowLeft size={16} />
-                    Back to Reports
-                </motion.button>
-
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -154,7 +143,8 @@ export default function ViewAccomplishmentReport() {
                                     </p>
                                 </div>
                             </div>
-
+                            
+                            <div className="flex gap-3">
                             <motion.span
                                 initial={{ scale: 0, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
@@ -167,7 +157,7 @@ export default function ViewAccomplishmentReport() {
                                 {isReportComplete ? (
                                     <>
                                         <CheckCircle size={14} />
-                                        Completed
+                                        Completed Review
                                     </>
                                 ) : (
                                     <>
@@ -176,6 +166,28 @@ export default function ViewAccomplishmentReport() {
                                     </>
                                 )}
                             </motion.span>
+                            <motion.span
+                                initial={{ scale: 0, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
+                                    className={`inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-full border ${report.status === "APPROVED BY PRESIDENT"
+                                    ? "bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 border-green-200"
+                                    : "bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-700 border-amber-200"
+                                    }`}
+                            >
+                                {report.status === "APPROVED BY PRESIDENT" ? (
+                                    <>
+                                        <CheckCircle size={14} />
+                                        {report.status}
+                                    </>
+                                ) : (
+                                    <>
+                                        <AlertCircle size={14} />
+                                        {report.status}
+                                    </>
+                                )}
+                            </motion.span>
+                            </div>
                         </div>
                     </div>
 
@@ -309,7 +321,6 @@ export default function ViewAccomplishmentReport() {
                                             </ul>
                                         </div>
 
-                                        {/* Entry Remarks */}
                                         {entry.remarks && (
                                             <div className="p-3 bg-slate-100 rounded-lg border border-slate-200 mb-4">
                                                 <p className="text-sm text-slate-600">
@@ -319,14 +330,13 @@ export default function ViewAccomplishmentReport() {
                                             </div>
                                         )}
 
-                                        {/* Signature Status */}
                                         {entry.signedBy && (
                                             <div className="flex items-center gap-2 pt-3 border-t border-slate-200">
                                                 <div className="p-1 bg-green-100 rounded">
                                                     <UserCheck size={16} className="text-green-600" />
                                                 </div>
                                                 <span className="text-sm text-green-700 font-medium">
-                                                    Signed and approved by User #{entry.signedBy}
+                                                    Signed by Head: {entry.signedByUser.firstName} {entry.signedByUser.lastName}
                                                 </span>
                                             </div>
                                         )}
@@ -336,6 +346,7 @@ export default function ViewAccomplishmentReport() {
                         </div>
                     </motion.div>
                 )}
+                <ViewSignatureStatus isHaveDeanSignature={report.isHaveDeanSignature} isHavePresidentSignature={report.isHavePresidentSignature} />
             </motion.div>
         </div>
     );

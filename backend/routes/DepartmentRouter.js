@@ -2,6 +2,7 @@
 // Created on: 2026-01-24T11:09:17.630Z
 
 const express = require("express");
+const { Op } = require("sequelize");
 const { Department } = require("../models/Models");
 
 class DepartmentRouter {
@@ -17,10 +18,86 @@ class DepartmentRouter {
 		this.router.get("/get-all", async (req, res) => {
 			try {
 				const departments = await Department.findAll();
-
 				return res.json({
 					success: true,
 					message: "Successfully fetched all departments.",
+					departments,
+				});
+			} catch (err) {
+				console.error(err);
+				return res.status(500).json({
+					success: false,
+					message: "Internal server error.",
+				});
+			}
+		});
+		this.router.get("/get-all-request", async (req, res) => {
+			try {
+				const departmentId = req.user?.departmentId;
+				const isHead = req.user?.isHead;
+				let whereClause = {};
+				if (departmentId && isHead) {
+					whereClause = {
+						id: { [Op.ne]: departmentId },
+					};
+				}
+				const departments = await Department.findAll({
+					where: whereClause,
+				});
+				return res.json({
+					success: true,
+					message: "Successfully fetched all departments.",
+					departments,
+				});
+			} catch (err) {
+				console.error(err);
+				return res.status(500).json({
+					success: false,
+					message: "Internal server error.",
+				});
+			}
+		});
+		this.router.get("/get-my-department", async (req, res) => {
+			try {
+				const departmentId = req.user?.departmentId;
+				let whereClause = {};
+				if (departmentId) {
+					whereClause = { id: departmentId };
+				}
+				const departments = await Department.findAll({
+					where: whereClause,
+				});
+
+				return res.json({
+					success: true,
+					message: "Successfully fetched departments.",
+					departments,
+				});
+			} catch (err) {
+				console.error(err);
+				return res.status(500).json({
+					success: false,
+					message: "Internal server error.",
+				});
+			}
+		});
+
+		this.router.get("/get-all-except-user-department", async (req, res) => {
+			try {
+				const departmentId = req.user?.departmentId;
+				let whereClause = {};
+				if (departmentId) {
+					whereClause = {
+						id: { [Op.ne]: departmentId },
+					};
+				}
+
+				const departments = await Department.findAll({
+					where: whereClause,
+				});
+				return res.json({
+					success: true,
+					message: "Successfully fetched departments.",
 					departments,
 				});
 			} catch (err) {

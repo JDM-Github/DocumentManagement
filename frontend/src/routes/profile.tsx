@@ -18,8 +18,10 @@ import { DynamicForm } from "../components/Form";
 import RequestHandler from "../lib/utilities/RequestHandler";
 import { showToast, removeToast } from "../components/toast";
 import { useEffect, useState, useRef } from "react";
+import { useAuth } from "../lib/context/auth";
 
 export default function UserProfile() {
+    const { refreshUser } = useAuth();
     const [profile, setProfile] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -75,6 +77,7 @@ export default function UserProfile() {
             type: "text",
             icon: <IdCard size={16} />,
             section: "Basic Information",
+            disabled: true,
         },
         {
             name: "firstName",
@@ -219,6 +222,7 @@ export default function UserProfile() {
                 setSelectedFile(null);
                 setPreviewUrl(null);
                 fetchProfile();
+                await refreshUser();
             } else {
                 showToast(res.message || "Failed to update profile.", "error");
             }

@@ -5,9 +5,9 @@ import {
 	X,
 	Menu,
 	User,
-	Settings,
 	LogOut,
 	Building,
+	Shield,
 } from 'lucide-react';
 import { NavItem } from '../lib/interface';
 import { navItems } from '../components/navItems';
@@ -23,6 +23,10 @@ interface NavProps {
 	setCurrentPage: React.Dispatch<React.SetStateAction<string>>;
 	targetMyself: boolean;
 	departmentName: string;
+	isDean: boolean;
+	isPresident: boolean;
+	isMISD: boolean;
+	profilePhoto: string;
 }
 
 function Nav({
@@ -33,7 +37,11 @@ function Nav({
 	currentPage,
 	setCurrentPage,
 	targetMyself,
-	departmentName
+	departmentName,
+	isDean,
+	isPresident,
+	isMISD,
+	profilePhoto
 }: NavProps) {
 	const { user } = useAuth();
 	const location = useLocation();
@@ -149,8 +157,17 @@ function Nav({
 	};
 
 	const renderNavItem = (item: NavItem, depth = 0) => {
-		if (item.hideInMyself && targetMyself) return null;
-		if (item.showOnlyToSelf && !targetMyself) return null;
+		if (!isDean && !isPresident) {
+			if (isMISD) {
+				if (!item.isShownToMISD) return null;
+			} else {
+				if (item.showOnlyToHigherup) return null;
+				if (item.hideInMyself && targetMyself) return null;
+				if (item.showOnlyToSelf && !targetMyself) return null;
+			}
+		} else {
+			if (!item.isShownToDeanPresident) return null
+		}
 
 		const Icon = item.icon;
 		const hasChildren = item.children && item.children.length > 0;
@@ -159,8 +176,7 @@ function Nav({
 		const paddingLeft = depth === 0 ? "pl-3" : depth === 1 ? "pl-8" : "pl-12";
 		const activeGradient = getActiveGradient(depth, isActive, !hasChildren);
 		const expandedBackground = getExpandedBackground(depth, isExpanded);
-		
-		const haveMyNavigation = ["Documents", "To Receive", "Ongoing", "To Release", "Declined", "Completed"]; 
+		const haveMyNavigation = ["Documents", "To Receive", "Ongoing", "To Release", "Declined", "Completed"];
 		const myText = (targetMyself && haveMyNavigation.some((item_text) => item.label === item_text)) ? "My " : "";
 
 		return (
@@ -293,8 +309,16 @@ function Nav({
 								className={`w-full flex items-center gap-3 transition-all duration-200 hover:bg-white/5 rounded-lg p-2 ${isCollapsed ? "justify-center" : ""} ${isAccountOpen && !isCollapsed ? 'bg-white/5' : ''}`}
 							>
 
-								<div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-cyan-400 rounded-full flex items-center justify-center text-slate-900 font-semibold shadow-lg flex-shrink-0">
-									{initials}
+								<div className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg flex-shrink-0 overflow-hidden bg-gradient-to-br from-blue-400 to-cyan-400 text-slate-900 font-semibold">
+									{profilePhoto ? (
+										<img
+											src={profilePhoto}
+											alt="Profile"
+											className="w-full h-full object-cover"
+										/>
+									) : (
+										initials
+									)}
 								</div>
 
 								<div
@@ -337,19 +361,18 @@ function Nav({
 										<button
 											className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 transition-colors"
 											onClick={() => {
-												setCurrentPage('Settings');
+												navigate("/security");
 												setIsAccountOpen(false);
 											}}
 										>
-											<Settings size={16} className="flex-shrink-0" />
-											<span>Settings</span>
+											<Shield size={16} className="flex-shrink-0" />
+											<span>Security</span>
 										</button>
 										<div className="border-t border-white/10 my-1"></div>
 										<button
 											className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
 											onClick={() => {
 												setIsAccountOpen(false);
-												// Handle logout
 											}}
 										>
 											<LogOut size={16} className="flex-shrink-0" />

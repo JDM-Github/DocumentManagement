@@ -14,6 +14,7 @@ interface User {
     firstName: string;
     lastName: string;
     isActive: boolean;
+    profilePhoto: string;
 }
 
 interface AuthContextType {
@@ -37,8 +38,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const storedToken = localStorage.getItem('authToken');
             if (storedUser && storedToken) {
                 try {
-                    // // Parse stored user
-                    // const parsedUser = JSON.parse(storedUser);
                     const response = await RequestHandler.fetchData(
                         'POST',
                         'auth/verify',

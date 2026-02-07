@@ -4,6 +4,7 @@ import DataTable from "../../components/Table";
 import RequestHandler from "../../lib/utilities/RequestHandler";
 import { removeToast, showToast } from "../../components/toast";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 
 type RequestLogsTableProps = {
     title: string;
@@ -20,8 +21,8 @@ export default function RequestLogsTable({ title, departmentId, action }: Reques
     const columns = [
         { key: "id", label: "ID", sortable: true, width: "60px" },
         { key: "requestNo", label: "Request No", sortable: true },
+        { key: "action", label: "Action", sortable: true },
         { key: "requesterName", label: "Requester", sortable: true },
-        // { key: "departmentName", label: "Department", sortable: true },
         { key: "actedByName", label: "Acted By", sortable: true },
         { key: "createdAt", label: "Date", sortable: true, icon: <Calendar size={14} /> },
     ];
@@ -61,6 +62,7 @@ export default function RequestLogsTable({ title, departmentId, action }: Reques
                 requestNo: log.requestNo,
                 requestLetterId: log.requestLetterId,
                 requesterName: log.requesterName,
+                action: log.action,
                 // departmentName: log.toDepartmentId ? departmentsMap[log.toDepartmentId] : "N/A",
                 actedByName: log.actedByName || "System",
                 remarks: log.remarks || "",
@@ -127,16 +129,41 @@ export default function RequestLogsTable({ title, departmentId, action }: Reques
     );
 
     return (
-        <div className="p-4 sm:p-6 min-h-[600px]">
-            <DataTable
-                title={title}
-                columns={columns}
-                data={data}
-                loading={loading}
-                expandable={true}
-                renderExpandedRow={renderExpandedRow}
-                renderActions={renderActions}
-            />
-        </div>
+        <motion.div
+            className="p-4 sm:p-6 max-w-7xl mx-auto min-h-screen"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+        >
+            <motion.div
+                className="mb-6"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1, duration: 0.3 }}
+            >
+                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">
+                    {title}
+                </h1>
+                <p className="text-base text-slate-600">
+                    View and manage the records in this table. Expand rows to see detailed information about each entry and perform actions as needed.
+                </p>
+            </motion.div>
+
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.4 }}
+            >
+                <DataTable
+                    title={title}
+                    columns={columns}
+                    data={data}
+                    loading={loading}
+                    expandable={true}
+                    renderExpandedRow={renderExpandedRow}
+                    renderActions={renderActions}
+                />
+            </motion.div>
+        </motion.div>
     );
 }

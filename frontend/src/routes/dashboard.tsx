@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
 	AreaChart,
@@ -7,13 +7,13 @@ import {
 	Bar,
 	PieChart,
 	Pie,
-	Cell,
 	XAxis,
 	YAxis,
 	CartesianGrid,
 	Tooltip,
 	Legend,
 	ResponsiveContainer,
+	Cell,
 } from 'recharts';
 import {
 	TrendingUp,
@@ -25,37 +25,154 @@ import {
 	CalendarDays,
 	ChevronLeft,
 	ChevronRight,
+	Loader2,
 } from 'lucide-react';
-
-const monthlyData = [
-	{ month: 'Jan', documents: 245, completed: 189, pending: 56 },
-	{ month: 'Feb', documents: 312, completed: 267, pending: 45 },
-	{ month: 'Mar', documents: 289, completed: 234, pending: 55 },
-	{ month: 'Apr', documents: 356, completed: 298, pending: 58 },
-	{ month: 'May', documents: 423, completed: 367, pending: 56 },
-	{ month: 'Jun', documents: 389, completed: 344, pending: 45 },
-];
-
-const documentTypes = [
-	{ name: 'Leave Requests', value: 320, color: '#3B82F6' },
-	{ name: 'Budget Reports', value: 245, color: '#8B5CF6' },
-	{ name: 'Evaluations', value: 189, color: '#10B981' },
-	{ name: 'Supply Orders', value: 156, color: '#F59E0B' },
-	{ name: 'Others', value: 124, color: '#6366F1' },
-];
-
-const accomplishments = [
-	{ month: 'Jan', rate: 77 },
-	{ month: 'Feb', rate: 86 },
-	{ month: 'Mar', rate: 81 },
-	{ month: 'Apr', rate: 84 },
-	{ month: 'May', rate: 87 },
-	{ month: 'Jun', rate: 92 },
-];
+import { removeToast, showToast } from '../components/toast';
+import RequestHandler from '../lib/utilities/RequestHandler';
 
 export default function Dashboard() {
 	const [currentDate, setCurrentDate] = useState(new Date());
 	const [selectedDate, setSelectedDate] = useState<number | null>(null);
+	const [loading, setLoading] = useState(true);
+	const [holidays, setHolidays] = useState<any[]>([]);
+	const [monthlyData, setMonthlyData] = useState<any[]>([]);
+	const [documentTypes, setDocumentTypes] = useState<any[]>([]);
+	const [accomplishments, setAccomplishments] = useState<any[]>([]);
+	const [averageRate, setAverageRate] = useState('0');
+
+	const [stats, setStats] = useState([
+		{
+			label: 'Total Documents',
+			value: '0',
+			change: '+0%',
+			trend: 'up' as 'up' | 'down',
+			color: 'from-blue-500 to-blue-600',
+			icon: FileText,
+		},
+		{
+			label: 'Pending Requests',
+			value: '0',
+			change: '+0%',
+			trend: 'down' as 'up' | 'down',
+			color: 'from-orange-500 to-orange-600',
+			icon: Clock,
+		},
+		{
+			label: 'Completed',
+			value: '0',
+			change: '+0%',
+			trend: 'up' as 'up' | 'down',
+			color: 'from-green-500 to-green-600',
+			icon: CheckCircle,
+		},
+		{
+			label: 'Faculty Members',
+			value: '0',
+			change: '+0%',
+			trend: 'up' as 'up' | 'down',
+			color: 'from-purple-500 to-purple-600',
+			icon: Users,
+		},
+	]);
+
+	const fetchDashboardData = async () => {
+		setLoading(true);
+		const toastId = showToast('Loading dashboard...', 'loading');
+
+		try {
+			const [statsRes, monthlyRes, typesRes, rateRes, holidaysRes] = await Promise.all([
+				RequestHandler.fetchData('GET', 'dashboard/stats', {}),
+				RequestHandler.fetchData('GET', 'dashboard/monthly-data', {}),
+				RequestHandler.fetchData('GET', 'dashboard/document-types', {}),
+				RequestHandler.fetchData('GET', 'dashboard/accomplishment-rate', {}),
+				RequestHandler.fetchData('GET', `dashboard/holidays/${currentDate.getFullYear()}`, {})
+			]);
+
+			if (statsRes.success && statsRes.stats) {
+				setStats([
+					{
+						label: 'Total Documents',
+						value: statsRes.stats.totalDocuments.value.toLocaleString(),
+						change: statsRes.stats.totalDocuments.change,
+						trend: statsRes.stats.totalDocuments.trend,
+						color: 'from-blue-500 to-blue-600',
+						icon: FileText,
+					},
+					{
+						label: 'Pending Requests',
+						value: statsRes.stats.pendingRequests.value.toLocaleString(),
+						change: statsRes.stats.pendingRequests.change,
+						trend: statsRes.stats.pendingRequests.trend,
+						color: 'from-orange-500 to-orange-600',
+						icon: Clock,
+					},
+					{
+						label: 'Completed',
+						value: statsRes.stats.completed.value.toLocaleString(),
+						change: statsRes.stats.completed.change,
+						trend: statsRes.stats.completed.trend,
+						color: 'from-green-500 to-green-600',
+						icon: CheckCircle,
+					},
+					{
+						label: 'Faculty Members',
+						value: statsRes.stats.facultyMembers.value.toLocaleString(),
+						change: statsRes.stats.facultyMembers.change,
+						trend: statsRes.stats.facultyMembers.trend,
+						color: 'from-purple-500 to-purple-600',
+						icon: Users,
+					},
+				]);
+			}
+
+			if (monthlyRes.success && monthlyRes.monthlyData) {
+				setMonthlyData(monthlyRes.monthlyData);
+			}
+
+			if (typesRes.success && typesRes.documentTypes) {
+				setDocumentTypes(typesRes.documentTypes);
+			}
+
+			if (rateRes.success) {
+				if (rateRes.accomplishments) {
+					setAccomplishments(rateRes.accomplishments);
+				}
+				if (rateRes.averageRate !== undefined) {
+					setAverageRate(rateRes.averageRate);
+				}
+			}
+
+			if (holidaysRes.success && holidaysRes.holidays) {
+				setHolidays(holidaysRes.holidays);
+			}
+
+			showToast('Dashboard loaded successfully.', 'success');
+		} catch (err) {
+			console.error(err);
+			showToast('Error loading dashboard.', 'error');
+		} finally {
+			removeToast(toastId);
+			setLoading(false);
+		}
+	};
+
+	useEffect(() => {
+		fetchDashboardData();
+	}, []);
+
+	useEffect(() => {
+		const fetchHolidays = async () => {
+			try {
+				const res = await RequestHandler.fetchData('GET', `dashboard/holidays/${currentDate.getFullYear()}`, {});
+				if (res.success && res.holidays) {
+					setHolidays(res.holidays);
+				}
+			} catch (err) {
+				console.error(err);
+			}
+		};
+		fetchHolidays();
+	}, [currentDate]);
 
 	const getDaysInMonth = (date: Date) => {
 		const year = date.getFullYear();
@@ -63,6 +180,17 @@ export default function Dashboard() {
 		const firstDay = new Date(year, month, 1).getDay();
 		const daysInMonth = new Date(year, month + 1, 0).getDate();
 		return { firstDay, daysInMonth };
+	};
+
+	const isHoliday = (day: number) => {
+		const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+		return holidays.some(h => h.date && h.date.startsWith(dateStr));
+	};
+
+	const getHolidayName = (day: number) => {
+		const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+		const holiday = holidays.find(h => h.date && h.date.startsWith(dateStr));
+		return holiday?.name || '';
 	};
 
 	const { firstDay, daysInMonth } = getDaysInMonth(currentDate);
@@ -90,51 +218,29 @@ export default function Dashboard() {
 		show: { opacity: 1, y: 0 },
 	};
 
-	const stats = [
-		{
-			label: 'Total Documents',
-			value: '1,234',
-			change: '+12%',
-			trend: 'up',
-			color: 'from-blue-500 to-blue-600',
-			icon: FileText,
-		},
-		{
-			label: 'Pending Requests',
-			value: '45',
-			change: '-8%',
-			trend: 'down',
-			color: 'from-orange-500 to-orange-600',
-			icon: Clock,
-		},
-		{
-			label: 'Completed',
-			value: '856',
-			change: '+23%',
-			trend: 'up',
-			color: 'from-green-500 to-green-600',
-			icon: CheckCircle,
-		},
-		{
-			label: 'Faculty Members',
-			value: '432',
-			change: '+5%',
-			trend: 'up',
-			color: 'from-purple-500 to-purple-600',
-			icon: Users,
-		},
-	];
+	if (loading) {
+		return (
+			<div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+				<motion.div
+					initial={{ opacity: 0, scale: 0.9 }}
+					animate={{ opacity: 1, scale: 1 }}
+					className="text-center space-y-4"
+				>
+					<Loader2 size={48} className="animate-spin text-blue-600 mx-auto" />
+					<p className="text-lg font-semibold text-slate-800">Loading Dashboard...</p>
+				</motion.div>
+			</div>
+		);
+	}
 
 	return (
-		<div className="p-4 sm:p-6 lg:p-8 bg-gradient-to-br from-slate-50 to-slate-100 min-h-full scrollbar-thin">
+		<div className="p-4 sm:p-6 lg:p-8 bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
 			<motion.div
-				variants={container}
 				initial="hidden"
 				animate="show"
-				className="space-y-6"
+				className="space-y-6 max-w-[1600px] mx-auto"
 			>
 				<motion.div
-					variants={item}
 					className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6"
 				>
 					{stats.map((stat, i) => {
@@ -179,98 +285,111 @@ export default function Dashboard() {
 
 				<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 					<motion.div
-						variants={item}
 						className="bg-white p-6 rounded-xl shadow-lg border border-slate-200"
 					>
 						<h2 className="text-xl font-bold text-slate-900 mb-4">
 							Document Trends
 						</h2>
-						<ResponsiveContainer width="100%" height={300}>
-							<AreaChart data={monthlyData}>
-								<defs>
-									<linearGradient id="colorDocuments" x1="0" y1="0" x2="0" y2="1">
-										<stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8} />
-										<stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
-									</linearGradient>
-									<linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
-										<stop offset="5%" stopColor="#10B981" stopOpacity={0.8} />
-										<stop offset="95%" stopColor="#10B981" stopOpacity={0} />
-									</linearGradient>
-								</defs>
-								<CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-								<XAxis dataKey="month" stroke="#64748B" />
-								<YAxis stroke="#64748B" />
-								<Tooltip
-									contentStyle={{
-										backgroundColor: '#1E293B',
-										border: 'none',
-										borderRadius: '8px',
-										color: '#fff',
-									}}
-								/>
-								<Legend />
-								<Area
-									type="monotone"
-									dataKey="documents"
-									stroke="#3B82F6"
-									fillOpacity={1}
-									fill="url(#colorDocuments)"
-								/>
-								<Area
-									type="monotone"
-									dataKey="completed"
-									stroke="#10B981"
-									fillOpacity={1}
-									fill="url(#colorCompleted)"
-								/>
-							</AreaChart>
-						</ResponsiveContainer>
+						{monthlyData.length > 0 ? (
+							<ResponsiveContainer width="100%" height={300}>
+								<AreaChart data={monthlyData}>
+									<defs>
+										<linearGradient id="colorDocuments" x1="0" y1="0" x2="0" y2="1">
+											<stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8} />
+											<stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+										</linearGradient>
+										<linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
+											<stop offset="5%" stopColor="#10B981" stopOpacity={0.8} />
+											<stop offset="95%" stopColor="#10B981" stopOpacity={0} />
+										</linearGradient>
+									</defs>
+									<CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+									<XAxis dataKey="month" stroke="#64748B" />
+									<YAxis stroke="#64748B" />
+									<Tooltip
+										contentStyle={{
+											backgroundColor: '#1E293B',
+											border: 'none',
+											borderRadius: '8px',
+											color: '#fff',
+										}}
+									/>
+									<Legend />
+									<Area
+										type="monotone"
+										dataKey="documents"
+										stroke="#3B82F6"
+										fillOpacity={1}
+										fill="url(#colorDocuments)"
+									/>
+									<Area
+										type="monotone"
+										dataKey="completed"
+										stroke="#10B981"
+										fillOpacity={1}
+										fill="url(#colorCompleted)"
+									/>
+								</AreaChart>
+							</ResponsiveContainer>
+						) : (
+							<div className="h-[300px] flex items-center justify-center text-slate-500">
+								<div className="text-center">
+									<FileText className="w-12 h-12 mx-auto mb-2 text-slate-300" />
+									<p>No trend data available yet</p>
+								</div>
+							</div>
+						)}
 					</motion.div>
 
 					<motion.div
-						variants={item}
 						className="bg-white p-6 rounded-xl shadow-lg border border-slate-200"
 					>
 						<h2 className="text-xl font-bold text-slate-900 mb-4">
 							Document Distribution
 						</h2>
-						<ResponsiveContainer width="100%" height={300}>
-							<PieChart>
-								<Pie
-									data={documentTypes}
-									cx="50%"
-									cy="50%"
-									labelLine={false}
-									label={({ name, percent }) =>
-										`${name}: ${(percent! * 100).toFixed(0)}%`
-									}
-									outerRadius={100}
-									fill="#8884d8"
-									dataKey="value"
-								>
-									{documentTypes.map((entry, index) => (
-										<Cell key={`cell-${index}`} fill={entry.color} />
-									))}
-								</Pie>
-								<Tooltip
-									contentStyle={{
-										backgroundColor: '#1E293B',
-										border: 'none',
-										borderRadius: '8px',
-										color: '#fff',
-									}}
-									itemStyle={{ color: '#FFFFFF' }} 
-								/>
-							</PieChart>
-						</ResponsiveContainer>
+						{documentTypes.length > 0 ? (
+							<ResponsiveContainer width="100%" height={300}>
+								<PieChart>
+									<Pie
+										data={documentTypes}
+										cx="50%"
+										cy="50%"
+										labelLine={false}
+										label={({ name, percent }) =>
+											`${name}: ${(percent! * 100).toFixed(0)}%`
+										}
+										outerRadius={100}
+										fill="#8884d8"
+										dataKey="value"
+									>
+										{documentTypes.map((entry, index) => (
+											<Cell key={`cell-${index}`} fill={entry.color} />
+										))}
+									</Pie>
+									<Tooltip
+										contentStyle={{
+											backgroundColor: '#1E293B',
+											border: 'none',
+											borderRadius: '8px',
+											color: '#fff',
+										}}
+										itemStyle={{ color: '#FFFFFF' }}
+									/>
+								</PieChart>
+							</ResponsiveContainer>
+						) : (
+							<div className="h-[300px] flex items-center justify-center text-slate-500">
+								<div className="text-center">
+									<FileText className="w-12 h-12 mx-auto mb-2 text-slate-300" />
+									<p>No documents yet</p>
+								</div>
+							</div>
+						)}
 					</motion.div>
 				</div>
 
-				{/* Calendar and Accomplishments Row */}
 				<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-					{/* Calendar */}
 					<motion.div
-						variants={item}
 						className="bg-white p-6 rounded-xl shadow-lg border border-slate-200"
 					>
 						<div className="flex items-center justify-between mb-6">
@@ -318,130 +437,88 @@ export default function Dashboard() {
 									currentDate.getMonth() === new Date().getMonth() &&
 									currentDate.getFullYear() === new Date().getFullYear();
 								const isSelected = selectedDate === day;
+								const holiday = isHoliday(day);
+								const holidayName = getHolidayName(day);
+
 								return (
 									<motion.button
 										key={day}
 										whileHover={{ scale: 1.1 }}
 										whileTap={{ scale: 0.95 }}
 										onClick={() => setSelectedDate(day)}
-										className={`aspect-square flex items-center justify-center rounded-lg text-sm font-medium transition-all ${isToday
-												? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg'
+										title={holiday ? holidayName : ''}
+										className={`aspect-square flex items-center justify-center rounded-lg text-sm font-medium transition-all relative ${isToday
+											? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg'
+											: holiday
+												? 'bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-md'
 												: isSelected
 													? 'bg-blue-100 text-blue-700'
 													: 'hover:bg-slate-100 text-slate-700'
 											}`}
 									>
 										{day}
+										{holiday && (
+											<span className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-400 rounded-full"></span>
+										)}
 									</motion.button>
 								);
 							})}
 						</div>
+						{selectedDate && isHoliday(selectedDate) && (
+							<div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+								<p className="text-sm font-semibold text-red-900">
+									🎉 {getHolidayName(selectedDate)}
+								</p>
+							</div>
+						)}
 					</motion.div>
 
-					{/* Accomplishment Rate */}
 					<motion.div
-						variants={item}
 						className="bg-white p-6 rounded-xl shadow-lg border border-slate-200"
 					>
 						<h2 className="text-xl font-bold text-slate-900 mb-4">
 							Accomplishment Rate Analytics
 						</h2>
-						<ResponsiveContainer width="100%" height={300}>
-							<BarChart data={accomplishments}>
-								<CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-								<XAxis dataKey="month" stroke="#64748B" />
-								<YAxis stroke="#64748B" />
-								<Tooltip
-									contentStyle={{
-										backgroundColor: '#1E293B',
-										border: 'none',
-										borderRadius: '8px',
-										color: '#fff',
-									}}
-								/>
-								<Bar dataKey="rate" fill="#8B5CF6" radius={[8, 8, 0, 0]}>
-									{accomplishments.map((entry, index) => (
-										<Cell
-											key={`cell-${index}`}
-											fill={entry.rate >= 85 ? '#10B981' : '#8B5CF6'}
+						{accomplishments.length > 0 ? (
+							<>
+								<ResponsiveContainer width="100%" height={300}>
+									<BarChart data={accomplishments}>
+										<CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+										<XAxis dataKey="month" stroke="#64748B" />
+										<YAxis stroke="#64748B" />
+										<Tooltip
+											contentStyle={{
+												backgroundColor: '#1E293B',
+												border: 'none',
+												borderRadius: '8px',
+												color: '#fff',
+											}}
 										/>
-									))}
-								</Bar>
-							</BarChart>
-						</ResponsiveContainer>
-						<div className="mt-4 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg">
-							<p className="text-sm text-slate-600">Average Accomplishment Rate</p>
-							<p className="text-3xl font-bold text-purple-600">84.5%</p>
-						</div>
+										<Bar dataKey="rate" fill="#8B5CF6" radius={[8, 8, 0, 0]}>
+											{accomplishments.map((entry, index) => (
+												<Cell
+													key={`cell-${index}`}
+													fill={entry.rate >= 85 ? '#10B981' : '#8B5CF6'}
+												/>
+											))}
+										</Bar>
+									</BarChart>
+								</ResponsiveContainer>
+								<div className="mt-4 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg">
+									<p className="text-sm text-slate-600">Average Accomplishment Rate</p>
+									<p className="text-3xl font-bold text-purple-600">{averageRate}%</p>
+								</div>
+							</>
+						) : (
+							<div className="h-[300px] flex items-center justify-center text-slate-500">
+								<div className="text-center">
+									<CheckCircle className="w-12 h-12 mx-auto mb-2 text-slate-300" />
+									<p>No accomplishment data available yet</p>
+								</div>
+							</div>
+						)}
 					</motion.div>
 				</div>
-
-				<motion.div
-					variants={item}
-					className="bg-white p-6 rounded-xl shadow-lg border border-slate-200"
-				>
-					<h2 className="text-xl font-bold text-slate-900 mb-4">Recent Activity</h2>
-					<div className="space-y-3">
-						{[
-							{
-								id: 1,
-								action: 'Document request submitted',
-								user: 'John Doe',
-								time: '2h ago',
-								color: 'from-blue-500 to-blue-600',
-							},
-							{
-								id: 2,
-								action: 'Leave request approved',
-								user: 'Jane Smith',
-								time: '4h ago',
-								color: 'from-green-500 to-green-600',
-							},
-							{
-								id: 3,
-								action: 'New faculty evaluation completed',
-								user: 'Mike Johnson',
-								time: '5h ago',
-								color: 'from-purple-500 to-purple-600',
-							},
-							{
-								id: 4,
-								action: 'Budget report reviewed',
-								user: 'Sarah Wilson',
-								time: '1d ago',
-								color: 'from-orange-500 to-orange-600',
-							},
-							{
-								id: 5,
-								action: 'Supply order processed',
-								user: 'Tom Brown',
-								time: '2d ago',
-								color: 'from-pink-500 to-pink-600',
-							},
-						].map((activity) => (
-							<motion.div
-								key={activity.id}
-								whileHover={{ x: 5 }}
-								className="flex items-center gap-4 p-4 rounded-lg hover:bg-slate-50 transition-all duration-200 border border-transparent hover:border-slate-200"
-							>
-								<div
-									className={`w-12 h-12 rounded-full bg-gradient-to-br ${activity.color} flex items-center justify-center text-white font-bold shadow-lg flex-shrink-0`}
-								>
-									{activity.user.charAt(0)}
-								</div>
-								<div className="flex-1 min-w-0">
-									<p className="text-sm font-semibold text-slate-900">
-										{activity.action}
-									</p>
-									<p className="text-xs text-slate-600">by {activity.user}</p>
-								</div>
-								<span className="text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1 rounded-full whitespace-nowrap">
-									{activity.time}
-								</span>
-							</motion.div>
-						))}
-					</div>
-				</motion.div>
 			</motion.div>
 		</div>
 	);

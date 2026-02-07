@@ -179,7 +179,6 @@ export default function CreateAccomplishmentReport() {
                 transition={{ duration: 0.5 }}
                 className="max-w-7xl mx-auto"
             >
-                {/* Page Header */}
                 <div className="mb-6">
                     <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">
                         Create Accomplishment Report
@@ -190,7 +189,6 @@ export default function CreateAccomplishmentReport() {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Report Form Section */}
                     <motion.div
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
@@ -208,14 +206,12 @@ export default function CreateAccomplishmentReport() {
                         />
                     </motion.div>
 
-                    {/* Entries Section */}
                     <motion.div
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.4, delay: 0.2 }}
                         className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden"
                     >
-                        {/* Header */}
                         <div className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200 px-6 py-5">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
@@ -244,7 +240,6 @@ export default function CreateAccomplishmentReport() {
                             </div>
                         </div>
 
-                        {/* Entries List */}
                         <div className="p-6 max-h-[600px] overflow-y-auto">
                             <AnimatePresence mode="popLayout">
                                 {entries.length === 0 ? (

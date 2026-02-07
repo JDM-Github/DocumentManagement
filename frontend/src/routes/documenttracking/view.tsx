@@ -177,7 +177,7 @@ export default function RequestView() {
                 initial="hidden"
                 animate="visible"
                 variants={containerVariants}
-                className="max-w-8xl mx-auto"
+                className="max-w-7xl mx-auto"
             >
                 <motion.div variants={itemVariants} className="mb-6">
                     <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">

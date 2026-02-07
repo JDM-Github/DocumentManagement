@@ -25,28 +25,6 @@ export const signFields = [
     },
 ];
 
-export const forwardFields = [
-    {
-        name: "currentDepartmentId",
-        label: "Target Department",
-        type: "select",
-        required: true,
-        icon: <User size={14} />,
-        options: [
-            { value: "1", label: "Records Office" },
-            { value: "2", label: "Registrar" },
-            { value: "3", label: "Finance" },
-        ],
-    },
-    {
-        name: "remarks",
-        label: "Remarks",
-        type: "textarea",
-        rows: 3,
-        placeholder: "Optional remarks",
-    },
-];
-
 export const releaseFields = [
     {
         name: "remarks",
@@ -75,28 +53,6 @@ export const massSignFields = [
         required: true,
         rows: 3,
         placeholder: "Enter remarks for signing all selected requests",
-    },
-];
-
-export const massForwardFields = [
-    {
-        name: "currentDepartmentId",
-        label: "Target Department",
-        type: "select",
-        required: true,
-        icon: <User size={14} />,
-        options: [
-            { value: "1", label: "Records Office" },
-            { value: "2", label: "Registrar" },
-            { value: "3", label: "Finance" },
-        ],
-    },
-    {
-        name: "remarks",
-        label: "Remarks (applies to all selected requests)",
-        type: "textarea",
-        rows: 3,
-        placeholder: "Optional remarks for forwarding all requests",
     },
 ];
 
@@ -130,10 +86,76 @@ export default function OngoingRequest({
     const [isMassSignOpen, setIsMassSignOpen] = useState(false);
     const [isMassForwardOpen, setIsMassForwardOpen] = useState(false);
     const [isMassDenyOpen, setIsMassDenyOpen] = useState(false);
+    const [forwardDepartmentOptions, setforwardDepartmentOptions] = useState<
+        { value: string; label: string }[]
+    >([]);
 
     const handleSelectionChange = (rows: any[]) => {
         setSelectedRows(rows);
     };
+
+    const fetchDepartmentsNotSameDepartment = async () => {
+        const toastId = showToast("Fetching departments...", "loading");
+
+        try {
+            const res = await RequestHandler.fetchData(
+                "GET",
+                "department/get-all-except-user-department",
+                {}
+            );
+
+            if (res.success && res.departments) {
+                const options = res.departments.map((d: any) => ({
+                    value: String(d.id),
+                    label: d.name,
+                }));
+                setforwardDepartmentOptions(options);
+            } else {
+                showToast("Failed to fetch departments.", "error");
+            }
+        } catch (err) {
+            console.error(err);
+            showToast("Error fetching departments.", "error");
+        } finally {
+            removeToast(toastId);
+        }
+    };
+
+    const forwardFields = [
+        {
+            name: "currentDepartmentId",
+            label: "Target Department",
+            type: "select",
+            required: true,
+            icon: <User size={14} />,
+            options: forwardDepartmentOptions
+        },
+        {
+            name: "remarks",
+            label: "Remarks",
+            type: "textarea",
+            rows: 3,
+            placeholder: "Optional remarks",
+        },
+    ];
+
+    const massForwardFields = [
+        {
+            name: "currentDepartmentId",
+            label: "Target Department",
+            type: "select",
+            required: true,
+            icon: <User size={14} />,
+            options: forwardDepartmentOptions
+        },
+        {
+            name: "remarks",
+            label: "Remarks (applies to all selected requests)",
+            type: "textarea",
+            rows: 3,
+            placeholder: "Optional remarks for forwarding all requests",
+        },
+    ];
 
     const handleFormSubmit = async (row: any, action: "sign" | "forward" | "release" | "deny", data: any) => {
         const idToast = showToast(`${action.charAt(0).toUpperCase() + action.slice(1)}ing request ${row.requestNo}...`, "loading");
@@ -321,6 +343,7 @@ export default function OngoingRequest({
                                 onClick={() => {
                                     setSelectedRow(row);
                                     setIsForwardOpen(true);
+                                    fetchDepartmentsNotSameDepartment();
                                 }}
                                 className="p-1.5 hover:bg-blue-100 text-blue-600 rounded"
                                 title="Forward to another department"
@@ -339,6 +362,7 @@ export default function OngoingRequest({
                             </button>
                         </>
                     )}
+                    
                     <button
                         onClick={() => {
                             setSelectedRow(row);
@@ -384,7 +408,10 @@ export default function OngoingRequest({
                         {
                             label: `Mass Forward (${selectedRows.length})`,
                             icon: <ArrowRight size={14} />,
-                            onClick: () => setIsMassForwardOpen(true),
+                            onClick: () => {
+                                setIsMassForwardOpen(true);
+                                fetchDepartmentsNotSameDepartment();
+                            },
                             bg: "bg-blue-500",
                             hover: "hover:bg-blue-600",
                             text: "text-white",

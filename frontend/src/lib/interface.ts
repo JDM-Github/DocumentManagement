@@ -4,6 +4,10 @@ export interface NavItem {
     icon?: React.ComponentType<any>;
     hideInMyself?: boolean;
     showOnlyToSelf?: boolean;
+    showOnlyToHigherup?: boolean;
+    isShownToDeanPresident?: boolean;
+    hideToHead?: boolean;
+    isShownToMISD?: boolean;
     children?: NavItem[];
 }
 
@@ -24,16 +28,14 @@ export interface Announcement {
     id: string;
     title: string;
     message: string;
-    date: string;
-    priority: "low" | "medium" | "high";
+    type: 'general' | 'maintenance' | 'update' | 'event' | 'urgent';
+    priority: 'low' | 'medium' | 'high' | 'critical';
+    isActive: boolean;
+    startDate: string | null;
+    endDate: string | null;
+    targetAudience: 'all' | 'students' | 'faculty' | 'staff' | 'admins';
+    link: string | null;
+    metadata: Record<string, any>;
+    authorId: string;
+    createdAt: string;
 }
-
-export const sampleAnnouncements: Announcement[] = [
-    {
-        id: "1",
-        title: "System Upgrade",
-        message: "We're upgrading our servers for better performance.",
-        date: "Dec 15, 2024",
-        priority: "high"
-    }
-];

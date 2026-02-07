@@ -40,13 +40,18 @@ const RequestLetter = sequelize.define(
                 "TO_RELEASE",
                 "REVIEWED",
                 "DECLINED",
+                "SENT TO DEAN",
+                "SENT TO PRESIDENT",
                 "COMPLETED",
                 "DELETED"
             ),
             allowNull: false,
             defaultValue: "TO_RECEIVE",
         },
-
+        lastDepartmentId: {
+            type: DataTypes.INTEGER,
+            defaultValue: null
+        },
         currentDepartmentId: {
             type: DataTypes.INTEGER,
             allowNull: false,
@@ -61,6 +66,24 @@ const RequestLetter = sequelize.define(
             type: DataTypes.ARRAY(DataTypes.INTEGER),
             defaultValue: [],
         },
+
+        isInDean: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false
+        },
+        isInPresident: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false
+        },
+
+        isHaveDeanSignature: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false
+        },
+        isHavePresidentSignature: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false
+        }
 
     },
     {

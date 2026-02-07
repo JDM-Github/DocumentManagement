@@ -51,7 +51,7 @@ export const massDeniedFields = [
 export default function ToReceive({
     departmentId,
     isHead,
-    userId
+    userId,
 }: {
     departmentId: string;
     isHead: boolean;
@@ -210,42 +210,52 @@ export default function ToReceive({
 
     return (
         <>
-            <RequestStatus
-                toggleRefresh={toggleRefresh}
-                title="To Receive Requests"
-                departmentId={departmentId}
-                status="TO_RECEIVE"
-                renderActions={renderActions}
-                additionalButtons={[
-                    {
-                        label: `Mass Approve (${selectedRows.length})`,
-                        icon: <CheckCircle size={14} />,
-                        onClick: () => setIsMassApprovedOpen(true),
-                        bg: "bg-emerald-500",
-                        hover: "hover:bg-emerald-600",
-                        text: "text-white",
-                        disabled: selectedRows.length === 0
-                    },
-                    {
-                        label: `Mass Deny (${selectedRows.length})`,
-                        icon: <XCircle size={14} />,
-                        onClick: () => setIsMassDeniedOpen(true),
-                        bg: "bg-rose-500",
-                        hover: "hover:bg-rose-600",
-                        text: "text-white",
-                        disabled: selectedRows.length === 0
-                    },
-                    {
-                        label: "Refresh",
-                        icon: <RefreshCw size={14} />,
-                        onClick: () => setToggleRefresh(!toggleRefresh),
-                        bg: "bg-slate-200",
-                        hover: "hover:bg-slate-300",
-                        text: "text-slate-700"
-                    },
-                ]}
-                handleSelectionChange={handleSelectionChange}
-            />
+            {!isHead ?
+                <RequestStatus
+                    toggleRefresh={toggleRefresh}
+                    title="To Receive Requests"
+                    departmentId={departmentId}
+                    status="TO_RECEIVE"
+                    renderActions={renderActions}
+                />
+                :
+                <RequestStatus
+                    toggleRefresh={toggleRefresh}
+                    title="To Receive Requests"
+                    departmentId={departmentId}
+                    status="TO_RECEIVE"
+                    renderActions={renderActions}
+                    additionalButtons={[
+                        {
+                            label: `Mass Approve (${selectedRows.length})`,
+                            icon: <CheckCircle size={14} />,
+                            onClick: () => setIsMassApprovedOpen(true),
+                            bg: "bg-emerald-500",
+                            hover: "hover:bg-emerald-600",
+                            text: "text-white",
+                            disabled: selectedRows.length === 0
+                        },
+                        {
+                            label: `Mass Deny (${selectedRows.length})`,
+                            icon: <XCircle size={14} />,
+                            onClick: () => setIsMassDeniedOpen(true),
+                            bg: "bg-rose-500",
+                            hover: "hover:bg-rose-600",
+                            text: "text-white",
+                            disabled: selectedRows.length === 0
+                        },
+                        {
+                            label: "Refresh",
+                            icon: <RefreshCw size={14} />,
+                            onClick: () => setToggleRefresh(!toggleRefresh),
+                            bg: "bg-slate-200",
+                            hover: "hover:bg-slate-300",
+                            text: "text-slate-700"
+                        },
+                    ]}
+                    handleSelectionChange={handleSelectionChange}
+                />
+            }
 
             {selectedRow && isAcceptOpen && (
                 <DynamicForm

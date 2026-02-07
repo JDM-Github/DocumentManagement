@@ -8,7 +8,6 @@ export default function LoginScreen() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
-    const [rememberMe, setRememberMe] = useState(false);
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
@@ -240,17 +239,6 @@ export default function LoginScreen() {
                             </motion.div>
 
                             <motion.div variants={item} className="flex items-center justify-between">
-                                <label className="flex items-center gap-2 cursor-pointer group">
-                                    <input
-                                        type="checkbox"
-                                        checked={rememberMe}
-                                        onChange={(e) => setRememberMe(e.target.checked)}
-                                        className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                                    />
-                                    <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">
-                                        Remember me
-                                    </span>
-                                </label>
                                 <button
                                     onClick={() => console.log('Forgot password clicked')}
                                     className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors"
@@ -283,21 +271,6 @@ export default function LoginScreen() {
                             </motion.div>
                         </div>
 
-                        <motion.div variants={item} className="mt-8 pt-6 border-t border-slate-200">
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                <p className="text-xs text-slate-600 mb-2 font-semibold">Demo Credentials:</p>
-                                <div className="grid grid-cols-2 gap-2 text-xs">
-                                    <div>
-                                        <span className="text-slate-500">Email:</span>
-                                        <p className="font-mono font-semibold text-slate-900">admin@dms.com</p>
-                                    </div>
-                                    <div>
-                                        <span className="text-slate-500">Password:</span>
-                                        <p className="font-mono font-semibold text-slate-900">admin123</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </motion.div>
                     </motion.div>
 
                     <motion.p

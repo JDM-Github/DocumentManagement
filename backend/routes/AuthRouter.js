@@ -47,12 +47,17 @@ class AuthRouter {
                 }
 
                 const department = await Department.findByPk(user.departmentId);
+                if (!department && user.role == "USER") {
+                    return res.status(401).json({
+                        success: false,
+                        message: "User currently doesn't have department.",
+                    });
+                }
 
                 await user.update({
                     lastLoginAt: new Date(),
                     isActive: true,
                 });
-
                 const token = jwt.sign(
                     {
                         userId: user.id,
@@ -83,6 +88,7 @@ class AuthRouter {
                         isHead: user.role === "HEAD",
                         isActive: true,
                         lastLoginAt: user.lastLoginAt,
+                        profilePhoto: user.profilePhoto
                     },
                 });
             } catch (err) {
@@ -97,7 +103,6 @@ class AuthRouter {
         this.router.post("/verify", async (req, res) => {
             try {
                 const { token } = req.body;
-
                 if (!token) {
                     return res.status(400).json({
                         success: false,
@@ -106,7 +111,6 @@ class AuthRouter {
                 }
 
                 const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
                 const user = await User.findByPk(decoded.userId, {
                     attributes: { exclude: ["passwordHash"] },
                 });
@@ -117,9 +121,7 @@ class AuthRouter {
                         message: "Invalid or expired token.",
                     });
                 }
-
                 const department = await Department.findByPk(user.departmentId);
-
                 return res.json({
                     success: true,
                     user: {
@@ -135,6 +137,7 @@ class AuthRouter {
                         departmentCode: department?.code || null,
                         isHead: user.role === "HEAD",
                         isActive: user.isActive,
+                        profilePhoto: user.profilePhoto
                     },
                 });
             } catch (err) {

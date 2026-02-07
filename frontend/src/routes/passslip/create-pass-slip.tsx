@@ -2,6 +2,7 @@ import { Clock, FileText, Send } from "lucide-react";
 import { DynamicForm } from "../../components/Form";
 import RequestHandler from "../../lib/utilities/RequestHandler";
 import { showToast, removeToast } from "../../components/toast";
+import { motion } from "framer-motion";
 
 export default function CreatePassSlip() {
     const passSlipFields = [
@@ -80,16 +81,42 @@ export default function CreatePassSlip() {
     };
 
     return (
-        <div className="p-4 sm:p-6 max-w-3xl mx-auto min-h-[600px]">
-            <DynamicForm
-                isModal={false}
-                isOpen={true}
-                title="Create Pass Slip"
-                fields={passSlipFields}
-                onSubmit={handleSubmit}
-                actionType="CREATE"
-                size="lg"
-            />
-        </div>
+        <motion.div
+            className="p-4 sm:p-6 max-w-6xl mx-auto min-h-screen"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+        >
+            <motion.div
+                className="mb-6"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1, duration: 0.3 }}
+            >
+                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">
+                    Create Pass Slip
+                </h1>
+                <p className="text-base text-slate-600">
+                    Fill out the form below to request a pass slip. Please ensure all required
+                    fields are completed accurately before submitting.
+                </p>
+            </motion.div>
+
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.4 }}
+            >
+                <DynamicForm
+                    isModal={false}
+                    isOpen={true}
+                    title="Create Pass Slip"
+                    fields={passSlipFields}
+                    onSubmit={handleSubmit}
+                    actionType="CREATE"
+                    size="lg"
+                />
+            </motion.div>
+        </motion.div>
     );
 }

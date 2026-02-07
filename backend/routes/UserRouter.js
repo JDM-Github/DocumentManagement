@@ -3,8 +3,12 @@
 
 const express = require("express");
 const bcrypt = require("bcryptjs");
-const { User, Department } = require("../models/Models");
+const { User, Department, FacultyEvaluation } = require("../models/Models");
+const { Op } = require("sequelize");
 const upload = require("../middlewares/UploadProfileMiddleware");
+const sendEmail = require("../service/EmailService");
+
+const verificationCodes = new Map();
 
 class UserRouter {
 	constructor() {
@@ -19,6 +23,180 @@ class UserRouter {
 	// GET ROUTES
 	// =========================
 	getRouter() {
+		this.router.get("/admin/get-by-role/:filter", async (req, res) => {
+			try {
+				const userId = req.user?.userId;
+				const userRole = req.user?.role;
+				const { filter } = req.params;
+
+				if (!userId) {
+					return res.status(400).json({
+						success: false,
+						message: "User authentication required.",
+					});
+				}
+
+				const allowedRoles = ["MISD", "DEAN", "PRESIDENT"];
+				if (!allowedRoles.includes(userRole)) {
+					return res.status(403).json({
+						success: false,
+						message: "Unauthorized. Admin access required.",
+					});
+				}
+
+				const validFilters = ["ALL", "USER", "MISD", "HEAD", "DEAN", "PRESIDENT", "HIGHERUP"];
+				if (!validFilters.includes(filter)) {
+					return res.status(400).json({
+						success: false,
+						message: "Invalid filter.",
+					});
+				}
+				const whereClause = filter === "ALL" ? {} : (filter === "HIGHERUP" ? {
+					role: { [Op.in]: ["DEAN", "PRESIDENT"] }
+				} : { role: filter });
+				const users = await User.findAll({
+					where: whereClause,
+					attributes: { exclude: ["passwordHash"] },
+					order: [
+						["role", "ASC"],
+						["lastName", "ASC"],
+						["firstName", "ASC"],
+					],
+				});
+
+				const usersWithDepartment = await Promise.all(
+					users.map(async (user) => {
+						const userData = user.toJSON();
+
+						if (userData.departmentId) {
+							const department = await Department.findByPk(userData.departmentId, {
+								attributes: ["id", "name"],
+							});
+							userData.Department = department ? department.toJSON() : null;
+						} else {
+							userData.Department = null;
+						}
+
+						return userData;
+					})
+				);
+
+				return res.json({
+					success: true,
+					message: `Successfully fetched ${filter === "ALL" ? "all" : filter} users.`,
+					users: usersWithDepartment,
+				});
+			} catch (err) {
+				console.error(err);
+				return res.status(500).json({
+					success: false,
+					message: "Internal server error.",
+				});
+			}
+		});
+
+		this.router.get("/admin/get-by-department", async (req, res) => {
+			try {
+				const userId = req.user?.userId;
+				const userRole = req.user?.role;
+				const departmentId = req.user?.departmentId;
+
+				if (!userId) {
+					return res.status(400).json({
+						success: false,
+						message: "User authentication required.",
+					});
+				}
+
+				if (!departmentId) {
+					return res.status(400).json({
+						success: false,
+						message: "Department ID not found for this user.",
+					});
+				}
+
+				const users = await User.findAll({
+					where: { departmentId },
+					attributes: { exclude: ["passwordHash"] },
+					order: [
+						["role", "ASC"],
+						["lastName", "ASC"],
+						["firstName", "ASC"],
+					],
+				});
+
+				const department = await Department.findByPk(departmentId, {
+					attributes: ["id", "name"],
+				});
+
+				const usersWithDepartment = users.map(user => {
+					const userData = user.toJSON();
+					userData.Department = department ? department.toJSON() : null;
+					return userData;
+				});
+
+				return res.json({
+					success: true,
+					message: "Successfully fetched department users.",
+					users: usersWithDepartment,
+				});
+			} catch (err) {
+				console.error(err);
+				return res.status(500).json({
+					success: false,
+					message: "Internal server error.",
+				});
+			}
+		});
+
+		this.router.get("/profile/get", async (req, res) => {
+			try {
+				const userId = req.user?.userId;
+
+				if (!userId) {
+					return res.status(400).json({
+						success: false,
+						message: "User id is required.",
+					});
+				}
+
+				const user = await User.findByPk(userId, {
+					attributes: {
+						exclude: ["passwordHash", "deletedAt"]
+					}
+				});
+
+				if (!user) {
+					return res.status(404).json({
+						success: false,
+						message: "User not found.",
+					});
+				}
+
+				let department = null;
+				if (user.departmentId) {
+					department = await Department.findByPk(user.departmentId, {
+						attributes: ["id", "name", "code", "description"]
+					});
+				}
+
+				return res.json({
+					success: true,
+					message: "Successfully fetched user profile.",
+					profile: {
+						...user.toJSON(),
+						department
+					}
+				});
+			} catch (err) {
+				console.error(err);
+				return res.status(500).json({
+					success: false,
+					message: "Internal server error.",
+				});
+			}
+		});
+
 		this.router.get("/get-all", async (req, res) => {
 			try {
 				const users = await User.findAll({
@@ -66,15 +244,74 @@ class UserRouter {
 			}
 		});
 
+		this.router.get("/get-department", async (req, res) => {
+			try {
+				const departmentId = req.user?.departmentId;
+				const userId = req.user?.userId;
+				const whereClause = {}
+
+				if (departmentId) {
+					whereClause["departmentId"] = departmentId
+				}
+
+				if (userId) {
+					whereClause["id"] = {
+						[Op.not]: userId
+					}
+				}
+				const currentDate = new Date();
+				const currentYear = currentDate.getFullYear();
+				const currentMonth = currentDate.getMonth() + 1;
+				const academicPeriod = currentMonth >= 8
+					? `${currentYear}-${currentYear + 1}`
+					: `${currentYear - 1}-${currentYear}`;
+
+				const evaluatedFacultyIds = await FacultyEvaluation.findAll({
+					where: {
+						evaluatorId: userId,
+						academicPeriod
+					},
+					attributes: ['facultyId']
+				});
+
+				const evaluatedIds = evaluatedFacultyIds.map(eval2 => eval2.facultyId);
+
+				if (evaluatedIds.length > 0) {
+					whereClause["id"] = {
+						[Op.and]: [
+							{ [Op.not]: userId },
+							{ [Op.notIn]: evaluatedIds }
+						]
+					};
+				}
+
+				const users = await User.findAll({
+					where: whereClause,
+					attributes: { exclude: ["passwordHash"] },
+				});
+
+				return res.json({
+					success: true,
+					users,
+					academicPeriod,
+				});
+			} catch (err) {
+				console.error(err);
+				return res.status(500).json({
+					success: false,
+					message: "Internal server error.",
+				});
+			}
+		});
 		this.router.get("/me", async (req, res) => {
 			try {
 				const userId = req.user?.userId;
 				const departmentId = req.user?.departmentId;
 
-				if (!userId || !departmentId) {
+				if (!userId) {
 					return res.status(400).json({
 						success: false,
-						message: "User ID and department ID are required",
+						message: "User ID are required",
 					});
 				}
 
@@ -91,19 +328,21 @@ class UserRouter {
 					});
 				}
 
-				const department = await Department.findByPk(departmentId);
-				if (!department) {
-					return res.status(404).json({
-						success: false,
-						message: "Department not found",
-					});
+				let departmentName = "ALL DEPARTMENT";
+				if (departmentId) {
+					const department = await Department.findByPk(departmentId);
+					if (department) {
+						departmentName = department.namel;
+					}
 				}
-
 				const userData = user.get({ plain: true });
 
 				return res.json({
 					success: true,
-					user: { ...userData, departmentName: department.name },
+					user: {
+						...userData,
+						departmentName: departmentName
+					},
 				});
 			} catch (err) {
 				console.error(err);
@@ -118,7 +357,180 @@ class UserRouter {
 	}
 
 	postRouter() {
-		this.router.post("/create", async (req, res) => {
+		this.router.post("/security/request-email-change", async (req, res) => {
+			try {
+				const userId = req.user?.userId;
+				const userRole = req.user?.role;
+				const { newEmail, password } = req.body;
+
+				if (!userId) {
+					return res.status(400).json({
+						success: false,
+						message: "User authentication required.",
+					});
+				}
+
+				if (!newEmail || !password) {
+					return res.status(400).json({
+						success: false,
+						message: "New email and password are required.",
+					});
+				}
+
+				const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+				if (!emailRegex.test(newEmail)) {
+					return res.status(400).json({
+						success: false,
+						message: "Invalid email format.",
+					});
+				}
+
+				const user = await User.findByPk(userId);
+				if (!user) {
+					return res.status(404).json({
+						success: false,
+						message: "User not found.",
+					});
+				}
+
+				const isMatch = await bcrypt.compare(password, user.passwordHash);
+				if (!isMatch) {
+					return res.status(400).json({
+						success: false,
+						message: "Incorrect password.",
+					});
+				}
+
+				const existingUser = await User.findOne({ where: { email: newEmail } });
+				if (existingUser) {
+					return res.status(400).json({
+						success: false,
+						message: "Email address is already in use.",
+					});
+				}
+
+				const needsVerification = ["USER", "HEAD"].includes(userRole);
+
+				if (needsVerification) {
+					const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+					verificationCodes.set(userId, {
+						code: verificationCode,
+						newEmail: newEmail,
+						expiresAt: Date.now() + 10 * 60 * 1000, 
+					});
+
+					const subject = "Email Change Verification Code";
+					const text = `Your verification code is: ${verificationCode}. This code will expire in 10 minutes.`;
+					const html = `
+						<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+							<h2 style="color: #1E40AF;">Email Change Verification</h2>
+							<p>You have requested to change your email address.</p>
+							<div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
+								<h1 style="color: #1E40AF; font-size: 32px; letter-spacing: 4px; margin: 0;">${verificationCode}</h1>
+							</div>
+							<p>This verification code will expire in <strong>10 minutes</strong>.</p>
+							<p>If you did not request this change, please ignore this email.</p>
+						</div>
+					`;
+					await sendEmail(newEmail, subject, text, html);
+					return res.json({
+						success: true,
+						message: "Verification code sent to new email address.",
+						requiresVerification: true,
+					});
+				} else {
+					user.email = newEmail;
+					await user.save();
+
+					return res.json({
+						success: true,
+						message: "Email changed successfully.",
+						requiresVerification: false,
+					});
+				}
+			} catch (err) {
+				console.error(err);
+				return res.status(500).json({
+					success: false,
+					message: "Internal server error.",
+				});
+			}
+		});
+
+		this.router.post("/security/verify-email-change", async (req, res) => {
+			try {
+				const userId = req.user?.userId;
+				const { verificationCode, newEmail } = req.body;
+
+				if (!userId) {
+					return res.status(400).json({
+						success: false,
+						message: "User authentication required.",
+					});
+				}
+
+				if (!verificationCode || !newEmail) {
+					return res.status(400).json({
+						success: false,
+						message: "Verification code and new email are required.",
+					});
+				}
+
+				const storedData = verificationCodes.get(userId);
+				if (!storedData) {
+					return res.status(400).json({
+						success: false,
+						message: "No verification request found. Please request a new code.",
+					});
+				}
+				if (Date.now() > storedData.expiresAt) {
+					verificationCodes.delete(userId);
+					return res.status(400).json({
+						success: false,
+						message: "Verification code has expired. Please request a new one.",
+					});
+				}
+				if (storedData.code !== verificationCode) {
+					return res.status(400).json({
+						success: false,
+						message: "Invalid verification code.",
+					});
+				}
+
+				if (storedData.newEmail !== newEmail) {
+					return res.status(400).json({
+						success: false,
+						message: "Email does not match the verification request.",
+					});
+				}
+
+				const user = await User.findByPk(userId);
+				if (!user) {
+					return res.status(404).json({
+						success: false,
+						message: "User not found.",
+					});
+				}
+
+				user.email = newEmail;
+				await user.save();
+				verificationCodes.delete(userId);
+
+				return res.json({
+					success: true,
+					message: "Email changed successfully.",
+				});
+			} catch (err) {
+				console.error(err);
+				return res.status(500).json({
+					success: false,
+					message: "Internal server error.",
+				});
+			}
+		});
+
+		this.router.post("/create", upload.single("profilePhoto"), async (req, res) => {
 			try {
 				const {
 					employeeNo,
@@ -126,7 +538,6 @@ class UserRouter {
 					middleName,
 					lastName,
 					email,
-					password,
 					contactNumber,
 					streetAddress,
 					barangay,
@@ -135,6 +546,7 @@ class UserRouter {
 					postalCode,
 					dateOfBirth,
 					gender,
+					password,
 					role,
 					departmentId,
 					jobTitle,
@@ -143,66 +555,83 @@ class UserRouter {
 					emergencyContactName,
 					emergencyContactNumber,
 					emergencyContactRelationship,
-					profilePhoto,
 				} = req.body;
 
-				// Validation
-				if (!firstName || !lastName || !email || !password || !departmentId) {
+				if (!firstName || !lastName || !email || !password) {
 					return res.status(400).json({
 						success: false,
-						message: "Required fields: firstName, lastName, email, password, departmentId",
+						message: "First name, last name, email, and password are required.",
 					});
 				}
 
-				// Check if email already exists
+				const validRoles = ["USER", "MISD", "HEAD"];
+				const requestedRole = role || "USER";
+
+				if (!validRoles.includes(requestedRole)) {
+					return res.status(400).json({
+						success: false,
+						message: "Invalid role. Only USER, MISD, and HEAD roles can be created.",
+					});
+				}
+
+				if (gender && !["MALE", "FEMALE", "OTHER"].includes(gender)) {
+					return res.status(400).json({
+						success: false,
+						message: "Invalid gender value.",
+					});
+				}
+
+				if (employmentStatus && !["ACTIVE", "INACTIVE", "ON_LEAVE"].includes(employmentStatus)) {
+					return res.status(400).json({
+						success: false,
+						message: "Invalid employment status.",
+					});
+				}
+
 				const existingUser = await User.findOne({ where: { email } });
 				if (existingUser) {
-					return res.status(409).json({
+					return res.status(400).json({
 						success: false,
-						message: "Email already exists.",
+						message: "Email address already in use.",
 					});
 				}
 
-				// Check if employeeNo already exists (if provided)
 				if (employeeNo) {
 					const existingEmployeeNo = await User.findOne({ where: { employeeNo } });
 					if (existingEmployeeNo) {
-						return res.status(409).json({
+						return res.status(400).json({
 							success: false,
-							message: "Employee number already exists.",
+							message: "Employee number already in use.",
 						});
 					}
 				}
 
-				// Hash password
-				const bcrypt = require("bcrypt");
 				const passwordHash = await bcrypt.hash(password, 10);
-
-				// Create user
 				const user = await User.create({
-					employeeNo,
+					employeeNo: employeeNo || null,
 					firstName,
-					middleName,
+					middleName: middleName || "",
 					lastName,
 					email,
+					contactNumber: contactNumber || "",
+					streetAddress: streetAddress || "",
+					barangay: barangay || "",
+					city: city || "",
+					province: province || "",
+					postalCode: postalCode || "",
+					dateOfBirth: dateOfBirth || null,
+					gender: gender || null,
 					passwordHash,
-					contactNumber,
-					streetAddress,
-					barangay,
-					city,
-					province,
-					postalCode,
-					dateOfBirth,
-					gender,
-					role: role || "USER",
-					departmentId,
-					jobTitle,
-					dateHired,
+					role: requestedRole,
+					departmentId: departmentId || null,
+					jobTitle: jobTitle || "",
+					dateHired: dateHired || null,
 					employmentStatus: employmentStatus || "ACTIVE",
-					emergencyContactName,
-					emergencyContactNumber,
-					emergencyContactRelationship,
-					profilePhoto,
+					emergencyContactName: emergencyContactName || "",
+					emergencyContactNumber: emergencyContactNumber || "",
+					emergencyContactRelationship: emergencyContactRelationship || "",
+					profilePhoto: req.file ? req.file.path : "",
+					isActive: true,
 				});
 
 				const userResponse = user.toJSON();
@@ -210,7 +639,7 @@ class UserRouter {
 
 				return res.status(201).json({
 					success: true,
-					message: "User created successfully.",
+					message: "User account created successfully.",
 					user: userResponse,
 				});
 			} catch (err) {
@@ -227,6 +656,152 @@ class UserRouter {
 	// PUT ROUTES
 	// =========================
 	putRouter() {
+		this.router.put("/security/change-password", async (req, res) => {
+			try {
+				const userId = req.user?.userId;
+				const { currentPassword, newPassword } = req.body;
+
+				if (!userId) {
+					return res.status(400).json({
+						success: false,
+						message: "User authentication required.",
+					});
+				}
+
+				if (!currentPassword || !newPassword) {
+					return res.status(400).json({
+						success: false,
+						message: "Current password and new password are required.",
+					});
+				}
+
+				if (newPassword.length < 8) {
+					return res.status(400).json({
+						success: false,
+						message: "Password must be at least 8 characters long.",
+					});
+				}
+
+				const user = await User.findByPk(userId);
+				if (!user) {
+					return res.status(404).json({
+						success: false,
+						message: "User not found.",
+					});
+				}
+
+				const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+				if (!isMatch) {
+					return res.status(400).json({
+						success: false,
+						message: "Current password is incorrect.",
+					});
+				}
+
+				const newPasswordHash = await bcrypt.hash(newPassword, 10);
+				user.passwordHash = newPasswordHash;
+				await user.save();
+
+				return res.json({
+					success: true,
+					message: "Password changed successfully.",
+				});
+			} catch (err) {
+				console.error(err);
+				return res.status(500).json({
+					success: false,
+					message: "Internal server error.",
+				});
+			}
+		});
+
+		this.router.put("/admin/update/:id", async (req, res) => {
+			try {
+				const userId = req.user?.userId;
+				const userRole = req.user?.role;
+				const { id } = req.params;
+
+				if (!userId) {
+					return res.status(400).json({
+						success: false,
+						message: "User authentication required.",
+					});
+				}
+
+				if (userRole !== "MISD") {
+					return res.status(403).json({
+						success: false,
+						message: "Unauthorized. Only MISD can edit users.",
+					});
+				}
+
+				const user = await User.findByPk(id);
+				if (!user) {
+					return res.status(404).json({
+						success: false,
+						message: "User not found.",
+					});
+				}
+
+				const {
+					firstName,
+					middleName,
+					lastName,
+					email,
+					contactNumber,
+					role,
+					departmentId,
+					jobTitle,
+					employmentStatus,
+				} = req.body;
+
+				if (role && !["USER", "MISD", "HEAD"].includes(role)) {
+					return res.status(400).json({
+						success: false,
+						message: "Invalid role. Only USER, MISD, and HEAD roles can be assigned.",
+					});
+				}
+
+				if (email && email !== user.email) {
+					const existingUser = await User.findOne({ where: { email } });
+					if (existingUser) {
+						return res.status(400).json({
+							success: false,
+							message: "Email address already in use.",
+						});
+					}
+				}
+
+				if (firstName) user.firstName = firstName;
+				if (middleName !== undefined) user.middleName = middleName;
+				if (lastName) user.lastName = lastName;
+				if (email) user.email = email;
+				if (contactNumber !== undefined) user.contactNumber = contactNumber;
+				if (role) user.role = role;
+				if (departmentId !== undefined) user.departmentId = departmentId;
+				if (jobTitle !== undefined) user.jobTitle = jobTitle;
+				if (employmentStatus) user.employmentStatus = employmentStatus;
+
+				await user.save();
+
+				const userResponse = user.toJSON();
+				delete userResponse.passwordHash;
+
+				return res.json({
+					success: true,
+					message: "User updated successfully.",
+					user: userResponse,
+				});
+			} catch (err) {
+				console.error(err);
+				return res.status(500).json({
+					success: false,
+					message: "Internal server error.",
+				});
+			}
+		});
+
+
 		this.router.put("/update", upload.single("profilePhoto"), async (req, res) => {
 			try {
 				const userId = req.user?.userId;
@@ -367,6 +942,62 @@ class UserRouter {
 	}
 
 	deleteRouter() {
+		this.router.delete("/admin/delete/:id", async (req, res) => {
+			try {
+				const userId = req.user?.userId;
+				const userRole = req.user?.role;
+				const { id } = req.params;
+
+				if (!userId) {
+					return res.status(400).json({
+						success: false,
+						message: "User authentication required.",
+					});
+				}
+
+				if (userRole !== "MISD") {
+					return res.status(403).json({
+						success: false,
+						message: "Unauthorized. Only MISD can delete users.",
+					});
+				}
+
+				if (parseInt(id) === userId) {
+					return res.status(400).json({
+						success: false,
+						message: "You cannot delete your own account.",
+					});
+				}
+
+				const user = await User.findByPk(id);
+				if (!user) {
+					return res.status(404).json({
+						success: false,
+						message: "User not found.",
+					});
+				}
+
+				if (["DEAN", "PRESIDENT"].includes(user.role)) {
+					return res.status(400).json({
+						success: false,
+						message: "Cannot delete DEAN or PRESIDENT users.",
+					});
+				}
+
+				await user.destroy();
+				return res.json({
+					success: true,
+					message: "User deleted successfully.",
+				});
+			} catch (err) {
+				console.error(err);
+				return res.status(500).json({
+					success: false,
+					message: "Internal server error.",
+				});
+			}
+		});
+		
 		this.router.delete("/delete/:id", async (req, res) => {
 			try {
 				const user = await User.findByPk(req.params.id);

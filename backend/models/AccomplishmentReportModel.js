@@ -21,6 +21,27 @@ const AccomplishmentReport = sequelize.define(
             type: DataTypes.TEXT,
             allowNull: true,
         },
+        status: {
+            type: DataTypes.ENUM("PENDING", "APPROVED BY DEAN", "APPROVED BY PRESIDENT", "REJECTED"),
+            allowNull: false,
+            defaultValue: "PENDING",
+        },
+        isInDean: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false
+        },
+        isInPresident: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false
+        },
+        isHaveDeanSignature: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false
+        },
+        isHavePresidentSignature: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false
+        }
     },
     { timestamps: true }
 );

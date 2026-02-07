@@ -21,6 +21,8 @@ const RequestLetterLog = sequelize.define(
                 "RELEASED",
                 "DECLINED",
                 "COMPLETED",
+                "SENT TO DEAN",
+                "SENT TO PRESIDENT",
                 "DELETED"
             ),
             allowNull: false,

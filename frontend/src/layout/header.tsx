@@ -6,19 +6,23 @@ import { AnnouncementPanel } from "../components/header/announcementpanel";
 import { NotificationPanel } from "../components/header/notificationpanel";
 import { useAuth } from "../lib/context/auth";
 import { useNotifications } from "../lib/hooks/notification";
+import { useAnnouncements } from "../lib/hooks/announcement";
 
 export default function Header({
     currentPage,
     targetMyself,
     setTargetMyself,
-    setCurrentPage
+    setCurrentPage,
+    profilePhoto
 }: {
     currentPage: string,
     targetMyself: boolean,
     setTargetMyself: (targetMyself: boolean) => void,
-    setCurrentPage: (page: string) => void
+    setCurrentPage: (page: string) => void,
+    profilePhoto: string
 }) {
     const { user, logout } = useAuth();
+    const { announcements, loading: announcementsLoading } = useAnnouncements();
     const [showNotifications, setShowNotifications] = useState(false);
     const [showAnnouncements, setShowAnnouncements] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
@@ -33,8 +37,6 @@ export default function Header({
         deleteAllNotifications,
         fetchNotifications
     } = useNotifications();
-
-    const [announcements, _] = useState<Announcement[]>([]);
 
     const handleMarkAsRead = async (id: string) => {
         await markAsRead(id);
@@ -85,7 +87,7 @@ export default function Header({
                     </div>
 
                     <div className="flex items-center gap-2">
-                        {/* {user?.role !== "HEAD" && */}
+                        {user?.role !== "DEAN" && user?.role !== "PRESIDENT" && user?.role !== "MISD" &&
                             <div className="relative">
                                 <button
                                     onClick={() => {
@@ -108,9 +110,8 @@ export default function Header({
                                     )}
                                 </button>
                             </div>
-                        {/* } */}
+                        }
 
-                        {/* Announcements */}
                         <div className="relative">
                             <button
                                 onClick={() => {
@@ -135,7 +136,6 @@ export default function Header({
                             )}
                         </div>
 
-                        {/* Notifications */}
                         <div className="relative">
                             <button
                                 onClick={() => {
@@ -177,7 +177,15 @@ export default function Header({
                                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white/10 transition-all duration-200 cursor-pointer hover:scale-105 group"
                             >
                                 <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-cyan-400 rounded-full flex items-center justify-center text-slate-900 font-semibold text-xs transition-transform group-hover:scale-110">
-                                    {initials}
+                                    {profilePhoto ? (
+                                        <img
+                                            src={profilePhoto}
+                                            alt="Profile"
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        initials
+                                    )}
                                 </div>
                                 <div className="hidden sm:block text-left">
                                     <p className="text-sm font-medium text-white">{user?.name || 'Admin User'}</p>

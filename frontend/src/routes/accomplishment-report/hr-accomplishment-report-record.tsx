@@ -4,7 +4,6 @@ import {
     Calendar,
     Eye,
     CheckCircle,
-    Clock,
     FileText,
     UserCheck,
     AlertCircle,
@@ -18,7 +17,15 @@ import { showToast, removeToast } from "../../components/toast";
 import { DynamicForm } from "../../components/Form";
 import { useNavigate } from "react-router-dom";
 
-export default function AccomplishmentRecord({ isHead }: { isHead: boolean }) {
+export default function AccomplishmentRecord({
+    isHead,
+    isDean,
+    isPresident
+}: {
+    isHead: boolean;
+    isDean: boolean;
+    isPresident: boolean;
+}) {
     const navigate = useNavigate();
 
     const [data, setData] = useState<any[]>([]);
@@ -35,53 +42,30 @@ export default function AccomplishmentRecord({ isHead }: { isHead: boolean }) {
             label: "ID",
             sortable: true,
             width: "60px",
-            render: (row: any) => (
-                <span className="font-mono text-xs text-slate-600">#{row.id}</span>
-            )
         },
         {
             key: "reportNo",
             label: "Report Number",
             sortable: true,
-            render: (row: any) => (
-                <span className="font-semibold text-slate-800">{row.reportNo}</span>
-            )
         },
         {
             key: "createdAt",
             label: "Date Created",
             sortable: true,
             icon: <Calendar size={14} />,
-            render: (row: any) => (
-                <div className="flex items-center gap-1.5">
-                    <Clock size={12} className="text-slate-400" />
-                    <span className="text-sm text-slate-600">{row.createdAt}</span>
-                </div>
-            )
         },
         {
             key: "entriesCount",
             label: "Entries",
             sortable: true,
-            render: (row: any) => (
-                <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">
-                    {row.entriesCount}
-                </span>
-            )
         },
         {
             key: "status",
             label: "Status",
-            render: (row: any) =>
-                isReportComplete(row.entries) ? (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 border border-green-200">
-                        <CheckCircle size={12} /> Completed
-                    </span>
-                ) : (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-700 border border-amber-200">
-                        <AlertCircle size={12} /> Pending Review
-                    </span>
-                ),
+        },
+        {
+            key: "review_status",
+            label: "Review Status",
         },
     ];
 
@@ -90,11 +74,21 @@ export default function AccomplishmentRecord({ isHead }: { isHead: boolean }) {
         const toastId = showToast("Fetching accomplishment records...", "loading");
 
         try {
-            const res = await RequestHandler.fetchData(
-                "GET",
-                "accomplishment/get-all-department",
-                {}
-            );
+            let res: any;
+            if (isDean || isPresident) {
+                res = await RequestHandler.fetchData(
+                    "GET",
+                    "accomplishment/get-all-higherup",
+                    {}
+                );
+            }
+            else {
+                res = await RequestHandler.fetchData(
+                    "GET",
+                    "accomplishment/get-all-department",
+                    {}
+                );
+            }
             removeToast(toastId);
 
             if (res.success && res.reports) {
@@ -108,7 +102,11 @@ export default function AccomplishmentRecord({ isHead }: { isHead: boolean }) {
                         hour: '2-digit',
                         minute: '2-digit'
                     }),
+                    isInDean: r.isInDean,
+                    isInPresident: r.isInPresident,
                     entriesCount: r.entries?.length || 0,
+                    status: r.status,
+                    review_status: isReportComplete(r.entries) ? "Complete" : "Pending to Review",
                     entries: r.entries || [],
                     uploadedUrl: r.uploadedUrl,
                     remarks: r.remarks,
@@ -136,7 +134,6 @@ export default function AccomplishmentRecord({ isHead }: { isHead: boolean }) {
             transition={{ duration: 0.3 }}
             className="space-y-4 p-6 bg-gradient-to-br from-slate-50 to-blue-50 rounded-lg border border-slate-200"
         >
-            {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200">
                 <div className="flex items-center gap-3">
                     <div className="p-2 bg-blue-100 rounded-lg">
@@ -166,7 +163,6 @@ export default function AccomplishmentRecord({ isHead }: { isHead: boolean }) {
                 )}
             </div>
 
-            {/* Report Remarks */}
             {row.remarks && (
                 <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                     <p className="text-sm font-semibold text-blue-900 mb-1">Report Remarks</p>
@@ -174,7 +170,6 @@ export default function AccomplishmentRecord({ isHead }: { isHead: boolean }) {
                 </div>
             )}
 
-            {/* Entries */}
             <div className="space-y-3">
                 <h5 className="text-base font-bold text-slate-800 flex items-center gap-2">
                     <div className="w-1 h-4 bg-blue-600 rounded-full" />
@@ -189,8 +184,8 @@ export default function AccomplishmentRecord({ isHead }: { isHead: boolean }) {
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: index * 0.05 }}
                             className={`relative overflow-hidden rounded-xl border-2 transition-all ${entry.signedBy
-                                    ? "bg-gradient-to-br from-green-50 to-emerald-50 border-green-200 shadow-sm"
-                                    : "bg-white border-slate-200 hover:border-blue-300 hover:shadow-md"
+                                ? "bg-gradient-to-br from-green-50 to-emerald-50 border-green-200 shadow-sm"
+                                : "bg-white border-slate-200 hover:border-blue-300 hover:shadow-md"
                                 }`}
                         >
                             {entry.signedBy && (
@@ -203,7 +198,6 @@ export default function AccomplishmentRecord({ isHead }: { isHead: boolean }) {
                             )}
 
                             <div className="p-4">
-                                {/* Date */}
                                 <div className="flex items-center gap-2 mb-3">
                                     <div className="p-1.5 bg-blue-100 rounded-lg">
                                         <Calendar size={14} className="text-blue-600" />
@@ -218,7 +212,6 @@ export default function AccomplishmentRecord({ isHead }: { isHead: boolean }) {
                                     </span>
                                 </div>
 
-                                {/* Activities */}
                                 <div className="mb-3">
                                     <p className="text-sm font-semibold text-slate-600 mb-2">
                                         Activities:
@@ -239,7 +232,6 @@ export default function AccomplishmentRecord({ isHead }: { isHead: boolean }) {
                                     </ul>
                                 </div>
 
-                                {/* Entry Remarks */}
                                 {entry.remarks && (
                                     <div className="p-2 bg-slate-100 rounded-lg border border-slate-200 mb-3">
                                         <p className="text-sm text-slate-600">
@@ -249,7 +241,6 @@ export default function AccomplishmentRecord({ isHead }: { isHead: boolean }) {
                                     </div>
                                 )}
 
-                                {/* Footer */}
                                 <div className="flex items-center justify-between pt-3 border-t border-slate-200">
                                     {entry.signedBy ? (
                                         <div className="flex items-center gap-2">
@@ -257,7 +248,7 @@ export default function AccomplishmentRecord({ isHead }: { isHead: boolean }) {
                                                 <UserCheck size={14} className="text-green-600" />
                                             </div>
                                             <span className="text-sm text-green-700 font-medium">
-                                                Signed by User #{entry.signedBy}
+                                                Signed by Head: {entry.signedByUser.firstName} {entry.signedByUser.lastName}
                                             </span>
                                         </div>
                                     ) : (
@@ -292,24 +283,120 @@ export default function AccomplishmentRecord({ isHead }: { isHead: boolean }) {
         </motion.div>
     );
 
+    const updateStatus = async (id: number, status: string) => {
+        const toastId = showToast("Updating status...", "loading");
+
+        const res = await RequestHandler.fetchData(
+            "PUT",
+            `accomplishment/update-status/${id}`,
+            { status }
+        );
+        removeToast(toastId);
+        if (res.success) {
+            showToast(`Accomplishment ${status.toLowerCase()}.`, "success");
+            fetchRecords();
+        } else {
+            showToast("Failed to update status.", "error");
+        }
+    };
+    const canDeanAct = (row: any) =>
+        isDean && row.isInDean && row.status === "PENDING";
+
+    const canPresidentAct = (row: any) =>
+        isPresident && row.isInPresident && row.status === "APPROVED BY DEAN";
+
     const renderActions = (row: any) => (
-        <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => navigate(`/accomplishment/${row.id}`)}
-            className="p-2 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors"
-            title="View Details"
-        >
-            <Eye size={16} />
-        </motion.button>
+        <>
+            <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => navigate(`/accomplishment/${row.id}`)}
+                className="p-2 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors"
+                title="View Details"
+            >
+                <Eye size={16} />
+            </motion.button>
+
+            {isReportComplete(row.entries) && (
+                <>
+                    {canDeanAct(row) && (
+                        <>
+                            <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() => updateStatus(row.id, "APPROVED BY DEAN")}
+                                className="p-2 hover:bg-green-100 text-green-600 rounded-lg transition-colors"
+                                title="Approve (Dean)"
+                            >
+                                ✔
+                            </motion.button>
+
+                            <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() => updateStatus(row.id, "REJECTED")}
+                                className="p-2 hover:bg-red-100 text-red-600 rounded-lg transition-colors"
+                                title="Reject"
+                            >
+                                ✖
+                            </motion.button>
+                        </>
+                    )}
+
+                    {canPresidentAct(row) && (
+                        <>
+                            <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() => updateStatus(row.id, "APPROVED BY PRESIDENT")}
+                                className="p-2 hover:bg-green-100 text-green-600 rounded-lg transition-colors"
+                                title="Approve (President)"
+                            >
+                                ✔
+                            </motion.button>
+
+                            <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() => updateStatus(row.id, "REJECTED")}
+                                className="p-2 hover:bg-red-100 text-red-600 rounded-lg transition-colors"
+                                title="Reject"
+                            >
+                                ✖
+                            </motion.button>
+                        </>
+                    )}
+                </>
+            )}
+        </>
     );
 
+
     return (
-        <div className="p-4 sm:p-6 min-h-[600px] bg-gradient-to-br from-slate-50 via-blue-50 to-slate-50">
+        <motion.div
+            className="p-4 sm:p-6 max-w-7xl mx-auto min-h-screen"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+        >
+            <motion.div
+                className="mb-6"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1, duration: 0.3 }}
+            >
+                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">
+                    Department Accomplishment Records
+                </h1>
+                <p className="text-base text-slate-600">
+                    Review department accomplishments and sign entries that require approval.
+                </p>
+            </motion.div>
+
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
+                transition={{ delay: 0.2, duration: 0.4 }}
             >
                 <DataTable
                     title="Department Accomplishment Records"
@@ -336,10 +423,10 @@ export default function AccomplishmentRecord({ isHead }: { isHead: boolean }) {
                                 disabled: true,
                                 icon: <Calendar size={14} />,
                                 placeholder: new Date(selectedEntry.date).toLocaleDateString("en-US", {
-                                    weekday: 'long',
-                                    month: 'long',
-                                    day: 'numeric',
-                                    year: 'numeric'
+                                    weekday: "long",
+                                    month: "long",
+                                    day: "numeric",
+                                    year: "numeric",
                                 }),
                             },
                             {
@@ -374,6 +461,6 @@ export default function AccomplishmentRecord({ isHead }: { isHead: boolean }) {
                     />
                 )}
             </AnimatePresence>
-        </div>
+        </motion.div>
     );
 }

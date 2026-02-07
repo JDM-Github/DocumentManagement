@@ -10,20 +10,16 @@ class PersonalInformationRouter {
 		this.getRouter();
 		this.postRouter();
 	}
-
 	getRouter() {
-
 		this.router.post("/find-or-create", async (req, res) => {
 			try {
 				const userId = req.user?.userId;
-
 				if (!userId) {
 					return res.status(400).json({
 						success: false,
 						message: "User ID is required",
 					});
 				}
-
 				const defaultData = {
 					surname: "",
 					firstName: "",
@@ -34,7 +30,6 @@ class PersonalInformationRouter {
 					citizenship: "Filipino",
 					mobileNo: "",
 				};
-
 				const [personalinformation, created] =
 					await PersonalInformation.findOrCreate({
 						where: { userId },
@@ -72,10 +67,7 @@ class PersonalInformationRouter {
 				});
 			}
 		});
-
-
 	}
-
 	postRouter() { }
 }
 

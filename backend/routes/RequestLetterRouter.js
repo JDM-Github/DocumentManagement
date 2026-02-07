@@ -15,6 +15,150 @@ class RequestLetterRouter {
 	}
 
 	getRouter() {
+		// GET /request-letter/get - Get all request letters for authenticated user
+		this.router.get("/get", async (req, res) => {
+			try {
+				const userId = req.user?.userId;
+				if (!userId) {
+					return res.status(400).json({ success: false, message: "User id required." });
+				}
+
+				const requestLetters = await RequestLetter.findAll({
+					where: { requesterId: userId },
+					order: [["createdAt", "DESC"]],
+				});
+
+				return res.json({
+					success: true,
+					requestLetters,
+				});
+			} catch (err) {
+				console.error(err);
+				return res.status(500).json({
+					success: false,
+					message: "Internal server error.",
+				});
+			}
+		});
+
+		// GET /request-letter/get/:id - Get specific request letter by ID
+		this.router.get("/get/:id", async (req, res) => {
+			try {
+				const { id } = req.params;
+				const requestLetter = await RequestLetter.findByPk(id);
+
+				if (!requestLetter) {
+					return res.status(404).json({
+						success: false,
+						message: "Request letter not found.",
+					});
+				}
+
+				const department = await Department.findByPk(
+					requestLetter.currentDepartmentId
+				);
+				requestLetter.dataValues.currentDepartmentName = department
+					? department.name
+					: "N/A";
+
+				return res.json({
+					success: true,
+					requestLetter,
+				});
+			} catch (err) {
+				console.error(err);
+				return res.status(500).json({
+					success: false,
+					message: "Internal server error.",
+				});
+			}
+		});
+
+		// GET /request-letter/count - Get total count of request letters
+		this.router.get("/count", async (req, res) => {
+			try {
+				const userId = req.user?.userId;
+				if (!userId) {
+					return res.status(400).json({ success: false, message: "User id required." });
+				}
+
+				const count = await RequestLetter.count({
+					where: { requesterId: userId }
+				});
+
+				return res.json({
+					success: true,
+					count
+				});
+			} catch (err) {
+				console.error(err);
+				return res.status(500).json({
+					success: false,
+					message: "Internal server error.",
+				});
+			}
+		});
+
+		// GET /request-letter/stats - Get request letter statistics
+		this.router.get("/stats", async (req, res) => {
+			try {
+				const userId = req.user?.userId;
+				if (!userId) {
+					return res.status(400).json({ success: false, message: "User id required." });
+				}
+
+				const total = await RequestLetter.count({
+					where: { requesterId: userId }
+				});
+				const ongoing = await RequestLetter.count({
+					where: { requesterId: userId, status: "ONGOING" }
+				});
+				const toReceive = await RequestLetter.count({
+					where: { requesterId: userId, status: "TO_RECEIVE" }
+				});
+				const toRelease = await RequestLetter.count({
+					where: { requesterId: userId, status: "TO_RELEASE" }
+				});
+				const reviewed = await RequestLetter.count({
+					where: { requesterId: userId, status: "REVIEWED" }
+				});
+				const declined = await RequestLetter.count({
+					where: { requesterId: userId, status: "DECLINED" }
+				});
+				const sentToDean = await RequestLetter.count({
+					where: { requesterId: userId, status: "SENT TO DEAN" }
+				});
+				const sentToPresident = await RequestLetter.count({
+					where: { requesterId: userId, status: "SENT TO PRESIDENT" }
+				});
+				const completed = await RequestLetter.count({
+					where: { requesterId: userId, status: "COMPLETED" }
+				});
+
+				return res.json({
+					success: true,
+					stats: {
+						total,
+						ongoing,
+						toReceive,
+						toRelease,
+						reviewed,
+						declined,
+						sentToDean,
+						sentToPresident,
+						completed
+					}
+				});
+			} catch (err) {
+				console.error(err);
+				return res.status(500).json({
+					success: false,
+					message: "Internal server error.",
+				});
+			}
+		});
+
+		// Legacy routes (keep for backwards compatibility)
 		this.router.get("/get-all", async (req, res) => {
 			try {
 				const requestLetters = await RequestLetter.findAll({
@@ -58,12 +202,23 @@ class RequestLetterRouter {
 		this.router.get("/department/:departmentId/:status", async (req, res) => {
 			try {
 				const { departmentId, status } = req.params;
-
+				let whereClause = {};
+				if (status === "TO_RELEASE") {
+					whereClause = {
+						status: {
+							[Op.in]: ["TO_RELEASE", "SENT TO DEAN", "SENT TO PRESIDENT"]
+						}
+					}
+				} else {
+					whereClause = {
+						status
+					}
+				}
+				if (departmentId != 'null' && departmentId !== null) {
+					whereClause["currentDepartmentId"] = departmentId
+				}
 				const requestLetters = await RequestLetter.findAll({
-					where: {
-						currentDepartmentId: departmentId,
-						status,
-					},
+					where: whereClause,
 					order: [["createdAt", "DESC"]],
 				});
 
@@ -80,27 +235,35 @@ class RequestLetterRouter {
 			}
 		});
 
-		this.router.get("/get/:id", async (req, res) => {
+		this.router.get("/higherups/:status", async (req, res) => {
 			try {
-				const requestLetter = await RequestLetter.findByPk(req.params.id);
-
-				if (!requestLetter) {
-					return res.status(404).json({
-						success: false,
-						message: "Request letter not found.",
-					});
+				const { status } = req.params;
+				const isDean = req.user?.role === "DEAN";
+				const isPresident = req.user?.role === "PRESIDENT";
+				const whereClause = {}
+				if (isDean) {
+					whereClause["isInDean"] = true;
+					if (status == "Approved") {
+						whereClause["isHaveDeanSignature"] = true;
+					} else {
+						whereClause["isHaveDeanSignature"] = false;
+					}
 				}
-
-				const department = await Department.findByPk(
-					requestLetter.currentDepartmentId
-				);
-				requestLetter.dataValues.currentDepartmentName = department
-					? department.name
-					: "N/A";
-
+				if (isPresident) {
+					whereClause["isInPresident"] = true;
+					if (status == "Approved") {
+						whereClause["isHavePresidentSignature"] = true;
+					} else {
+						whereClause["isHavePresidentSignature"] = false;
+					}
+				}
+				const requestLetters = await RequestLetter.findAll({
+					where: whereClause,
+					order: [["createdAt", "DESC"]],
+				});
 				return res.json({
 					success: true,
-					requestLetter,
+					requestLetters,
 				});
 			} catch (err) {
 				console.error(err);
@@ -214,7 +377,6 @@ class RequestLetterRouter {
 
 		this.router.get(
 			"/user/:userId/:status?",
-
 			async (req, res) => {
 				try {
 					const { userId, status } = req.params;
@@ -248,7 +410,6 @@ class RequestLetterRouter {
 
 		this.router.get(
 			"/log/:action/:departmentId",
-
 			async (req, res) => {
 				try {
 					const { action, departmentId } = req.params;
@@ -310,10 +471,8 @@ class RequestLetterRouter {
 			}
 		);
 
-
 		this.router.get(
 			"/tracker/:userId",
-
 			async (req, res) => {
 				try {
 					const { userId } = req.params;
@@ -381,11 +540,9 @@ class RequestLetterRouter {
 				}
 			}
 		);
-
 	}
 
 	postRouter() {
-
 		this.router.post(
 			"/create",
 			upload.array("documents"),
@@ -418,6 +575,7 @@ class RequestLetterRouter {
 						requesterName,
 						purpose,
 						currentDepartmentId,
+						lastDepartmentId: null,
 						createdBy,
 						requestUploadedDocuments: uploadedFiles?.length ? uploadedFiles.join(",") : null,
 						status: "TO_RECEIVE",
@@ -446,10 +604,7 @@ class RequestLetterRouter {
 				}
 			}
 		);
-
-
 	}
-
 
 	putRouter() {
 		this.router.put("/action/:id/:userId/accept", async (req, res) => {
@@ -483,20 +638,74 @@ class RequestLetterRouter {
 				const { id, userId } = req.params;
 				const { remarks } = req.body;
 				const request = await RequestLetter.findByPk(id);
-
 				if (!request) return res.status(404).json({ success: false, message: "Request not found." });
 
-				await RequestLetter.update({ status: "COMPLETED" }, { where: { id } });
+				await RequestLetter.update({
+					status: "SENT TO DEAN",
+					isInDean: true,
+				}, { where: { id } });
+				await RequestLetterLog.create({
+					requestLetterId: id,
+					action: "SENT TO DEAN",
+					fromDepartmentId: request.currentDepartmentId,
+					toDepartmentId: request.currentDepartmentId,
+					actedBy: userId,
+					remarks: remarks || "Request sent to dean",
+				});
+				return res.json({ success: true, message: "Request sent to dean successfully." });
+			} catch (err) {
+				console.error(err);
+				return res.status(500).json({ success: false, message: "Internal server error." });
+			}
+		});
+
+		this.router.put("/dean_action/:id/:userId/approve", async (req, res) => {
+			try {
+				const { id, userId } = req.params;
+				const { remarks } = req.body;
+				const request = await RequestLetter.findByPk(id);
+				if (!request) return res.status(404).json({ success: false, message: "Request not found." });
+
+				await RequestLetter.update({
+					status: "SENT TO PRESIDENT",
+					isInPresident: true,
+					isHaveDeanSignature: true
+				}, { where: { id } });
+				await RequestLetterLog.create({
+					requestLetterId: id,
+					action: "SENT TO PRESIDENT",
+					fromDepartmentId: request.currentDepartmentId,
+					toDepartmentId: request.currentDepartmentId,
+					actedBy: userId,
+					remarks: remarks || "Request approved by dean.",
+				});
+				return res.json({ success: true, message: "Request approved successfully." });
+			} catch (err) {
+				console.error(err);
+				return res.status(500).json({ success: false, message: "Internal server error." });
+			}
+		});
+
+		this.router.put("/president_action/:id/:userId/approve", async (req, res) => {
+			try {
+				const { id, userId } = req.params;
+				const { remarks } = req.body;
+				const request = await RequestLetter.findByPk(id);
+				if (!request) return res.status(404).json({ success: false, message: "Request not found." });
+
+				await RequestLetter.update({
+					status: "COMPLETED",
+					isHavePresidentSignature: true
+				}, { where: { id } });
 				await RequestLetterLog.create({
 					requestLetterId: id,
 					action: "COMPLETED",
 					fromDepartmentId: request.currentDepartmentId,
 					toDepartmentId: request.currentDepartmentId,
 					actedBy: userId,
-					remarks: remarks || "Request completed",
+					remarks: remarks || "Request approved by president.",
 				});
-
-				return res.json({ success: true, message: "Request completed successfully." });
+				return res.json({ success: true, message: "Request approved successfully." });
 			} catch (err) {
 				console.error(err);
 				return res.status(500).json({ success: false, message: "Internal server error." });
@@ -599,7 +808,11 @@ class RequestLetterRouter {
 				if (!request) return res.status(404).json({ success: false, message: "Request not found." });
 
 				if (currentDepartmentId) {
-					await RequestLetter.update({ currentDepartmentId }, { where: { id } });
+					await RequestLetter.update(
+						{
+							lastDepartmentId: request.currentDepartmentId,
+							currentDepartmentId
+						}, { where: { id } });
 				}
 				await RequestLetterLog.create({
 					requestLetterId: id,
@@ -667,7 +880,6 @@ class RequestLetterRouter {
 				return res.status(500).json({ success: false, message: "Internal server error." });
 			}
 		});
-
 	}
 }
 

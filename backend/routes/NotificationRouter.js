@@ -15,6 +15,163 @@ class NotificationRouter {
 	}
 
 	getRouter() {
+		this.router.get("/get", async (req, res) => {
+			try {
+				const userId = req.user?.userId;
+
+				if (!userId) {
+					return res.status(400).json({
+						success: false,
+						message: "User id is required.",
+					});
+				}
+
+				const notifications = await Notification.findAll({
+					where: { userId: userId.toString() },
+					order: [["createdAt", "DESC"]],
+				});
+
+				return res.json({
+					success: true,
+					message: "Successfully fetched notifications.",
+					notifications,
+				});
+			} catch (err) {
+				console.error(err);
+				return res.status(500).json({
+					success: false,
+					message: "Internal server error.",
+				});
+			}
+		});
+		
+		this.router.get("/count", async (req, res) => {
+			try {
+				const userId = req.user?.userId;
+
+				if (!userId) {
+					return res.status(400).json({
+						success: false,
+						message: "User id is required.",
+					});
+				}
+
+				const total = await Notification.count({
+					where: { userId: userId.toString() }
+				});
+
+				const unread = await Notification.count({
+					where: {
+						userId: userId.toString(),
+						read: false
+					}
+				});
+
+				const read = await Notification.count({
+					where: {
+						userId: userId.toString(),
+						read: true
+					}
+				});
+
+				return res.json({
+					success: true,
+					count: {
+						total,
+						unread,
+						read
+					}
+				});
+			} catch (err) {
+				console.error(err);
+				return res.status(500).json({
+					success: false,
+					message: "Internal server error.",
+				});
+			}
+		});
+
+		this.router.get("/stats", async (req, res) => {
+			try {
+				const userId = req.user?.userId;
+
+				if (!userId) {
+					return res.status(400).json({
+						success: false,
+						message: "User id is required.",
+					});
+				}
+
+				const total = await Notification.count({
+					where: { userId: userId.toString() }
+				});
+
+				const unread = await Notification.count({
+					where: {
+						userId: userId.toString(),
+						read: false
+					}
+				});
+
+				const read = await Notification.count({
+					where: {
+						userId: userId.toString(),
+						read: true
+					}
+				});
+
+				// Count by type
+				const info = await Notification.count({
+					where: { userId: userId.toString(), type: "info" }
+				});
+
+				const warning = await Notification.count({
+					where: { userId: userId.toString(), type: "warning" }
+				});
+
+				const success = await Notification.count({
+					where: { userId: userId.toString(), type: "success" }
+				});
+
+				const error = await Notification.count({
+					where: { userId: userId.toString(), type: "error" }
+				});
+
+				const document = await Notification.count({
+					where: { userId: userId.toString(), type: "document" }
+				});
+
+				const request = await Notification.count({
+					where: { userId: userId.toString(), type: "request" }
+				});
+
+				return res.json({
+					success: true,
+					stats: {
+						total,
+						byReadStatus: {
+							unread,
+							read
+						},
+						byType: {
+							info,
+							warning,
+							success,
+							error,
+							document,
+							request
+						}
+					}
+				});
+			} catch (err) {
+				console.error(err);
+				return res.status(500).json({
+					success: false,
+					message: "Internal server error.",
+				});
+			}
+		});
+
 		this.router.get("/get-all", async (req, res) => {
 			try {
 				const userId = req.user?.userId;
